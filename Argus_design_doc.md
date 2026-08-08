@@ -118,6 +118,10 @@ If `career_url` is missing, behavior depends on execution mode:
 - **Non-LLM mode**: require explicit `career_url`
 - **LLM mode**: optionally discover and validate career URLs automatically
 
+1. Search for "<company> careers"
+2. Resolve and validate the career page
+3. Persist it for future runs
+
 ---
 
 ### 4.2 Job Title List
@@ -134,34 +138,6 @@ In **non-LLM mode**:
 
 In **LLM mode**:
 - Optional semantic normalization and fuzzy matching
-
-
-### 4.1 Company List
-Provided as a YAML or JSON file:
-
-```yaml
-companies:
-  - name: OpenAI
-    career_url: https://openai.com/careers
-  - name: Anthropic
-    career_url: https://www.anthropic.com/careers
-```
-
-If `career_url` is missing, the system will:
-1. Search for "<company> careers"
-2. Resolve and validate the career page
-3. Persist it for future runs
-
----
-
-### 4.2 Job Title List
-
-```yaml
-titles:
-  - Machine Learning Engineer
-  - Applied Scientist
-  - Research Scientist
-```
 
 Matching is case-insensitive and supports partial matches and normalization (e.g. "ML Engineer" ≈ "Machine Learning Engineer").
 
@@ -372,14 +348,6 @@ python search.py --mode llm --llm-provider anthropic
 
 Failure to configure LLM credentials **must never break** the non-LLM pipeline.
 
-
-The Job Application Agent:
-- Reads from `job_results/`
-- Selects jobs based on its own criteria
-- Never triggers crawling
-
-This ensures **strict separation of concerns**.
-
 ---
 
 ## 12. Error Handling & Safety
@@ -416,33 +384,11 @@ This design ensures:
 - A fully functional, shareable crawler without LLM dependencies
 - Optional intelligence layers for advanced users
 - Clean separation of concerns and failure domains
-
-**Non-LLM first. LLM optional. Shareable by default.**
-
-
-- Crawl timeout per company
-- Max pages per site
-- Hard stop on login / apply pages
-- Domain change detection
-
----
-
-## 12. Future Extensions (Optional)
-
-- Chrome takeover fallback (manual enable)
-- Job change detection (JD diffing)
-- Embedding-based title matching
-- RAG over historical job postings
-
----
-
-## 13. Summary
-
-This design provides:
 - Deterministic, scalable job discovery
 - Persistent company-level memory
 - Clean handoff to downstream agents
 - Minimal coupling and high extensibility
 
+**Non-LLM first. LLM optional. Shareable by default.**  
 **Crawler-first, agent-second, memory-driven.**
 

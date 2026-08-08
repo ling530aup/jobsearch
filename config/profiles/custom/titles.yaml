@@ -1,0 +1,52 @@
+# Target job titles to search for
+# The filter matches these phrases case-insensitively, including extra title text
+
+titles:
+  - Software Engineer
+  - Senior Software Engineer
+  - Staff Engineer
+  - Staff Software Engineer
+  - Application Engineer
+  - Backend Engineer
+  - Senior Backend Engineer
+  - Full Stack Engineer
+  - Java Engineer
+  - Developer
+  - Software Developer
+  - Senior Software Developer
+  - Staff Developer
+  - Senior Java Developer
+  - Application Developer
+  # Broad technical role families observed in career-site titles. Keep these
+  # values here so the matching scope can be changed without code changes.
+  - Software Development
+  - Software Development Engineer
+  - Senior Software Development Engineer
+
+
+
+
+
+
+# Location requirements
+# Jobs must contain at least one of these location values (case-insensitive)
+locations:
+  - United Kingdom
+  - Canada
+  - Ireland
+  - New Zealand
+  - Australia
+  - Singapore
+  - Hong Kong
+  - HK
+  - China
+  - Netherlands
+  - remote
+  - Germany
+
+# Levels to exclude from results
+# Available levels: staff, principal, lead, director, manager, head, vp, junior
+exclude_levels:
+  - manager
+  - principal
+  - director

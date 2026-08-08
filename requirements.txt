@@ -9,5 +9,8 @@ playwright>=1.40.0
 # YAML parsing
 pyyaml>=6.0
 
+# Offline country/city index for country-wide location matching
+geonamescache>=2.0.0
+
 # Type hints (included in Python 3.9+)
 # typing-extensions>=4.0.0

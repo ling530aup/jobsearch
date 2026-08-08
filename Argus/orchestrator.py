@@ -85,7 +85,7 @@ class Orchestrator:
         return companies
 
     def _load_filters(self) -> tuple:
-        """Load job titles, locations, and exclusions from YAML file."""
+        """Load all filter values from the selected profile YAML file."""
         path = Path(self.titles_file)
 
         if not path.exists():
@@ -95,9 +95,12 @@ class Orchestrator:
         with open(path, "r") as f:
             data = yaml.safe_load(f)
 
-        titles = data.get("titles", [])
-        locations = data.get("locations", [])
-        exclude_levels = data.get("exclude_levels", [])
+        # Keep matching data-driven: filter.py receives the profile values as-is
+        # instead of applying a separate built-in list of roles or locations.
+        data = data or {}
+        titles = data.get("titles", []) or []
+        locations = data.get("locations", []) or []
+        exclude_levels = data.get("exclude_levels", []) or []
         return titles, locations, exclude_levels
 
     def _create_location_filter(self) -> Optional[LocationFilter]:
@@ -106,11 +109,13 @@ class Orchestrator:
             return None
 
         # Check if 'remote' is in locations
-        locations_lower = [loc.lower() for loc in self.target_locations]
+        locations_lower = [str(loc).casefold() for loc in self.target_locations]
         allow_remote = "remote" in locations_lower
 
-        # Filter out 'remote' from location list (handled separately)
-        physical_locations = [loc for loc in self.target_locations if loc.lower() != "remote"]
+        # Filter out 'remote' from location list (handled separately).
+        physical_locations = [
+            loc for loc in self.target_locations if str(loc).casefold() != "remote"
+        ]
 
         return LocationFilter(physical_locations, allow_remote=allow_remote)
 

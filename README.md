@@ -45,6 +45,9 @@ pip install -r requirements.txt
 
 # Install Playwright browsers (for custom ATS sites)
 python -m playwright install chromium
+
+# install socksio for httpx for vpn 
+pip install "httpx[socks]"
 ```
 
 ## Quick Start
@@ -191,6 +194,70 @@ exclude_levels:
   - principal
 ```
 
+Title and location matching is case-insensitive and profile-driven: configured
+values are matched as phrases within the discovered job data, so extra title
+or location text is allowed without requiring built-in role or geography lists.
+When a configured location is a country (for example, `Canada`), the filter
+also matches city-only locations in that country using the local GeoNames city
+index. The `geonamescache` dependency must be installed for this country-wide
+expansion; explicit city values continue to work without it.
+
+The active profile controls which title configuration is loaded. For example,
+`run_search.py custom` loads `config/profiles/custom/titles.yaml`, while
+`run_search.py` without an argument loads the `default` profile. Therefore a
+title such as `Software Development Engineer` must be present in the profile
+being run. Country and city matching is handled by the separate
+`Argus/location.py` module and its `CountryLocationMatcher`. When a job
+includes an explicit country, that country must also be present in the profile
+before the job can pass the location filter. For a city-only location, a city
+listed in any configured country is accepted; for example, `Dublin` is accepted
+when `Ireland` is configured. This permits valid city-only listings even when
+the same city name exists in another country.
+
+The title/location pipeline is:
+
+```text
+ATS fetcher -> JobFilter -> LocationFilter/CountryLocationMatcher -> JobStore
+```
+
+`JobStore` deduplicates by canonical job URL across the entire output directory.
+If a URL was saved on an earlier run, it is not appended to the current date's
+file again; inspect the earlier date folder for that job. A matching title can
+therefore pass both filters but still have `Saved 0 new jobs` because it is an
+existing URL.
+
+#### Title matching logic
+
+`JobFilter` evaluates each discovered job title against every value in the
+profile's `titles` list. The matching process is intentionally configuration-
+driven and does not depend on a built-in list of roles or industries:
+
+1. Both the configured title and the discovered title are converted to
+   case-insensitive normalized text. Punctuation is treated as whitespace and
+   repeated whitespace is collapsed.
+2. Exclusion levels are checked first. If any configured `exclude_levels` token
+   appears as a complete normalized token in the job title, the job is rejected
+   immediately.
+3. A configured title matches when its normalized phrase appears inside the job
+   title. This allows additional seniority, technology, team, or location text,
+   for example `Senior Java Software Engineer - Trading` matching
+   `Java Software Engineer`.
+4. If a configured phrase is not contiguous but all of its tokens are present,
+   it is still an exact title-family match. This rule is independent of the
+   fuzzy threshold, so `Software Development Engineer, Amazon Foundational
+   Security Services` always matches `Software Development Engineer`.
+5. Only when not all configured tokens are present does the filter compare the
+   configured title with same-sized word windows using `SequenceMatcher`. The
+   effective fuzzy threshold is at least `0.80`, allowing minor spelling or
+   formatting variations without broadly matching different roles such as
+   `Software Engineer` and `Software Developer`.
+
+The job is retained if at least one configured title matches. The best score is
+returned internally for diagnostics, but filtering is based on the boolean
+match result. To broaden or narrow the search, update the `titles` and
+`exclude_levels` values in the profile YAML rather than adding role-specific
+rules to the filter code.
+
 **Available exclusion levels:**
 - `staff` - Staff-level positions
 - `principal` - Principal-level positions
@@ -210,6 +277,7 @@ For more control, use the CLI directly:
 # Using profiles (recommended)
 python search.py --profile default
 python search.py --profile alice --timeout 60
+python run_search.py custom
 
 # Using explicit config files
 python search.py \
@@ -297,7 +365,8 @@ Argus/
 │           └── titles.yaml
 ├── Argus/                      # Main package
 │   ├── orchestrator.py         # Main orchestration logic
-│   ├── filter.py               # Job title/location filtering
+    ├── filter.py               # Job title filtering and filter composition
+    ├── location.py             # Country/city-aware location matching
 │   ├── store.py                # Job persistence
 │   ├── registry.py             # Company registry management
 │   ├── models.py               # Data models
