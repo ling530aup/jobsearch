@@ -214,6 +214,19 @@ listed in any configured country is accepted; for example, `Dublin` is accepted
 when `Ireland` is configured. This permits valid city-only listings even when
 the same city name exists in another country.
 
+Company crawling is parallelized with a thread pool. Set `max_workers` in the
+profile's `titles.yaml` to control the number of concurrent company crawls:
+
+```yaml
+max_workers: 4
+```
+
+The default is `4`; invalid or non-positive values fall back to `4`. Logs show
+the worker thread, company, fetched count, post-title-filter count,
+post-location-filter count, newly saved count, and elapsed time. Shared URL
+deduplication and registry writes are protected so concurrent crawls do not
+corrupt result files.
+
 The title/location pipeline is:
 
 ```text

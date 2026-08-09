@@ -1,5 +1,9 @@
-"""Crawl orchestrator for job search agent."""
+"""Concurrent crawl orchestration for the job search agent."""
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import logging
+from threading import Lock
+from time import perf_counter
 import yaml
 from pathlib import Path
 from typing import List, Optional
@@ -21,6 +25,8 @@ from .ats import (
     GoogleFetcher,
     TikTokFetcher,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class Orchestrator:
@@ -45,6 +51,7 @@ class Orchestrator:
         self.titles_file = titles_file
         self.output_dir = output_dir
         self.timeout = timeout
+        self._detector_lock = Lock()
 
         self.registry = CompanyRegistry()
         self.store = JobStore(output_dir)
@@ -52,7 +59,12 @@ class Orchestrator:
 
         # Load configuration
         self.companies = self._load_companies()
-        self.target_titles, self.target_locations, self.exclude_levels = self._load_filters()
+        (
+            self.target_titles,
+            self.target_locations,
+            self.exclude_levels,
+            self.max_workers,
+        ) = self._load_filters()
         self.title_filter = JobFilter(
             self.target_titles,
             exclude_levels=self.exclude_levels
@@ -90,7 +102,7 @@ class Orchestrator:
 
         if not path.exists():
             print(f"Titles file not found: {self.titles_file}")
-            return [], [], []
+            return [], [], [], 4
 
         with open(path, "r") as f:
             data = yaml.safe_load(f)
@@ -101,7 +113,12 @@ class Orchestrator:
         titles = data.get("titles", []) or []
         locations = data.get("locations", []) or []
         exclude_levels = data.get("exclude_levels", []) or []
-        return titles, locations, exclude_levels
+        try:
+            max_workers = max(1, int(data.get("max_workers", 4)))
+        except (TypeError, ValueError):
+            logger.warning("Invalid max_workers in %s; using 4", self.titles_file)
+            max_workers = 4
+        return titles, locations, exclude_levels, max_workers
 
     def _create_location_filter(self) -> Optional[LocationFilter]:
         """Create location filter from config."""
@@ -125,10 +142,11 @@ class Orchestrator:
 
         # Detect ATS if not specified
         if not ats_type or ats_type == "unknown":
-            print(f"  Detecting ATS for {company.name}...")
-            ats_type = self.detector.detect(company.career_url)
+            logger.info("[%s] detecting ATS", company.name)
+            with self._detector_lock:
+                ats_type = self.detector.detect(company.career_url)
             self.registry.update_ats_type(company.name, ats_type)
-            print(f"  Detected: {ats_type}")
+            logger.info("[%s] detected ATS=%s", company.name, ats_type)
 
         # Return appropriate fetcher
         fetchers = {
@@ -155,34 +173,44 @@ class Orchestrator:
         Returns:
             List of Job objects found.
         """
-        print(f"\nCrawling {company.name}...")
+        started_at = perf_counter()
+        logger.info("[%s] crawl started", company.name)
 
         try:
             with self._get_fetcher(company) as fetcher:
                 jobs = fetcher.fetch_job_list()
-                print(f"  Found {len(jobs)} jobs")
+                fetched_count = len(jobs)
 
                 # Filter by titles if configured
                 if self.title_filter and jobs:
                     jobs = self.title_filter.filter_jobs(jobs)
-                    print(f"  After title filter: {len(jobs)} matching jobs")
+                title_count = len(jobs)
 
                 # Filter by location if configured
                 if self.location_filter and jobs:
                     jobs = self.location_filter.filter_jobs(jobs)
-                    print(f"  After location filter: {len(jobs)} matching jobs")
+                location_count = len(jobs)
 
                 # Save to store
                 new_count = self.store.save_jobs(jobs, company.name)
-                print(f"  Saved {new_count} new jobs")
 
                 # Update registry
                 self.registry.update_last_crawled(company.name)
 
+                logger.info(
+                    "[%s] crawl finished: fetched=%d title=%d location=%d new=%d elapsed=%.2fs",
+                    company.name,
+                    fetched_count,
+                    title_count,
+                    location_count,
+                    new_count,
+                    perf_counter() - started_at,
+                )
+
                 return jobs
 
         except Exception as e:
-            print(f"  Error crawling {company.name}: {e}")
+            logger.exception("[%s] crawl failed after %.2fs: %s", company.name, perf_counter() - started_at, e)
             return []
 
     def run(self) -> dict:
@@ -191,36 +219,40 @@ class Orchestrator:
         Returns:
             Summary statistics.
         """
-        print(f"Starting job search agent")
-        print(f"Companies: {len(self.companies)}")
-        print(f"Target titles: {len(self.target_titles)}")
+        logger.info("Starting job search agent")
+        logger.info("Companies: %d", len(self.companies))
+        logger.info("Max crawl workers: %d", self.max_workers)
+        logger.info("Target titles: %d", len(self.target_titles))
         if self.target_locations:
-            print(f"Target locations: {', '.join(self.target_locations)}")
+            logger.info("Target locations: %s", ", ".join(self.target_locations))
         if self.exclude_levels:
-            print(f"Excluding levels: {', '.join(self.exclude_levels)}")
-        print("-" * 50)
+            logger.info("Excluding levels: %s", ", ".join(self.exclude_levels))
 
         total_jobs = 0
         successful_companies = 0
         failed_companies = []
 
-        for company in self.companies:
-            try:
-                jobs = self.crawl_company(company)
-                if jobs:
-                    total_jobs += len(jobs)
-                    successful_companies += 1
-            except Exception as e:
-                print(f"  Failed: {e}")
-                failed_companies.append(company.name)
+        with ThreadPoolExecutor(max_workers=self.max_workers, thread_name_prefix="crawl") as executor:
+            futures = {
+                executor.submit(self.crawl_company, company): company
+                for company in self.companies
+            }
+            for future in as_completed(futures):
+                company = futures[future]
+                try:
+                    jobs = future.result()
+                    if jobs:
+                        total_jobs += len(jobs)
+                        successful_companies += 1
+                except Exception:
+                    logger.exception("[%s] worker failed", company.name)
+                    failed_companies.append(company.name)
 
         # Cleanup
         self.detector.close()
 
         # Summary
-        print("\n" + "=" * 50)
-        print("SUMMARY")
-        print("=" * 50)
+        logger.info("SUMMARY")
 
         stats = self.store.get_stats()
         summary = {
@@ -231,11 +263,11 @@ class Orchestrator:
             **stats,
         }
 
-        print(f"Companies crawled: {successful_companies}/{len(self.companies)}")
-        print(f"Total matching jobs found: {total_jobs}")
-        print(f"Results saved to: {self.output_dir}")
+        logger.info("Companies crawled: %d/%d", successful_companies, len(self.companies))
+        logger.info("Total matching jobs found: %d", total_jobs)
+        logger.info("Results saved to: %s", self.output_dir)
 
         if failed_companies:
-            print(f"Failed companies: {', '.join(failed_companies)}")
+            logger.error("Failed companies: %s", ", ".join(failed_companies))
 
         return summary

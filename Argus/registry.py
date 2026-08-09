@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from typing import Dict, List, Optional
 from datetime import datetime
+from threading import RLock
 
 from .models import Company
 
@@ -14,6 +15,7 @@ class CompanyRegistry:
     def __init__(self, registry_path: str = "companies_registry.json"):
         self.registry_path = Path(registry_path)
         self._companies: Dict[str, Company] = {}
+        self._lock = RLock()
         self._load()
 
     def _load(self) -> None:
@@ -36,8 +38,9 @@ class CompanyRegistry:
 
     def add(self, company: Company) -> None:
         """Add or update a company."""
-        self._companies[company.name.lower()] = company
-        self._save()
+        with self._lock:
+            self._companies[company.name.lower()] = company
+            self._save()
 
     def get(self, name: str) -> Optional[Company]:
         """Get company by name."""
@@ -58,14 +61,16 @@ class CompanyRegistry:
 
     def update_ats_type(self, name: str, ats_type: str) -> None:
         """Update the ATS type for a company."""
-        company = self.get(name)
-        if company:
-            company.ats_type = ats_type
-            self._save()
+        with self._lock:
+            company = self.get(name)
+            if company:
+                company.ats_type = ats_type
+                self._save()
 
     def update_last_crawled(self, name: str) -> None:
         """Update the last crawled timestamp."""
-        company = self.get(name)
-        if company:
-            company.last_crawled = datetime.now().isoformat()
-            self._save()
+        with self._lock:
+            company = self.get(name)
+            if company:
+                company.last_crawled = datetime.now().isoformat()
+                self._save()

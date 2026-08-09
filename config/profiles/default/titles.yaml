@@ -1,6 +1,9 @@
 # Target job titles to search for
 # The filter will match jobs containing these keywords
 
+# Number of companies crawled concurrently
+max_workers: 8
+
 titles:
   - Machine Learning Engineer
   - Research Scientist
@@ -24,4 +27,3 @@ locations:
 exclude_levels:
   - staff
   - principal
-

@@ -1,6 +1,9 @@
 # Target job titles to search for
 # The filter matches these phrases case-insensitively, including extra title text
 
+# Number of companies crawled concurrently
+max_workers: 8
+
 titles:
   - Software Engineer
   - Senior Software Engineer

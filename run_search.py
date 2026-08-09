@@ -2,10 +2,15 @@
 """Quick runner script for job search with profiles."""
 
 import os
+import logging
 import sys
 
 # Change to project directory
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s [%(threadName)s] %(message)s",
+)
 
 # Get profile from command line or use default
 profile = sys.argv[1] if len(sys.argv) > 1 else "default"

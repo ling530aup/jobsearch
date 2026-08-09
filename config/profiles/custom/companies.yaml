@@ -1,0 +1,167 @@
+# Company configuration for default profile
+# Alphabetically sorted by company name
+# Use direct ATS URLs for reliable job fetching
+
+companies:
+- name: Adept AI
+  career_url: https://jobs.ashbyhq.com/adept
+  ats_type: ashby
+- name: Airbnb
+  career_url: https://boards.greenhouse.io/airbnb
+  ats_type: greenhouse
+- name: Amazon
+  career_url: https://www.amazon.jobs
+  ats_type: amazon
+- name: Anthropic
+  career_url: https://boards.greenhouse.io/anthropic
+  ats_type: greenhouse
+- name: Apple
+  career_url: https://jobs.apple.com/en-us/search
+  ats_type: custom
+- name: Block
+  career_url: https://boards.greenhouse.io/block
+  ats_type: greenhouse
+- name: Booking.com
+  career_url: https://jobs.booking.com
+  ats_type: custom
+- name: Brex
+  career_url: https://boards.greenhouse.io/brex
+  ats_type: greenhouse
+- name: Chime
+  career_url: https://boards.greenhouse.io/chime
+  ats_type: greenhouse
+- name: Citadel
+  career_url: https://www.citadel.com/careers/
+  ats_type: custom
+- name: Citadel Securities
+  career_url: https://www.citadelsecurities.com/careers/
+  ats_type: custom
+- name: Coinbase
+  career_url: https://boards.greenhouse.io/coinbase
+  ats_type: greenhouse
+- name: Cohere
+  career_url: https://jobs.ashbyhq.com/cohere
+  ats_type: ashby
+- name: Confluent
+  career_url: https://jobs.ashbyhq.com/confluent
+  ats_type: ashby
+- name: Databricks
+  career_url: https://boards.greenhouse.io/databricks
+  ats_type: greenhouse
+- name: DE Shaw
+  career_url: https://www.deshaw.com/careers
+  ats_type: custom
+- name: DeepMind
+  career_url: https://boards.greenhouse.io/deepmind
+  ats_type: greenhouse
+- name: DoorDash
+  career_url: https://boards.greenhouse.io/doordashusa
+  ats_type: greenhouse
+- name: Elastic
+  career_url: https://boards.greenhouse.io/elastic
+  ats_type: greenhouse
+- name: Expedia
+  career_url: https://careers.expediagroup.com
+  ats_type: custom
+- name: Flexport
+  career_url: https://boards.greenhouse.io/flexport
+  ats_type: greenhouse
+- name: Google
+  career_url: https://careers.google.com/jobs/results/
+  ats_type: google
+- name: Grab
+  career_url: https://grab.careers
+  ats_type: custom
+- name: Hudson River Trading
+  career_url: https://boards.greenhouse.io/hrttalentcommunity
+  ats_type: greenhouse
+- name: Indeed
+  career_url: https://boards.greenhouse.io/indeed
+  ats_type: greenhouse
+- name: Instacart
+  career_url: https://boards.greenhouse.io/instacart
+  ats_type: greenhouse
+- name: Jane Street
+  career_url: https://boards.greenhouse.io/janestreet
+  ats_type: greenhouse
+- name: LinkedIn
+  career_url: https://boards.greenhouse.io/linkedin
+  ats_type: greenhouse
+- name: Lyft
+  career_url: https://boards.greenhouse.io/lyft
+  ats_type: greenhouse
+- name: Meta
+  career_url: https://www.metacareers.com/jobsearch
+  ats_type: meta
+- name: Microsoft
+  career_url: https://jobs.careers.microsoft.com/global/en/search
+  ats_type: custom
+- name: Mistral AI
+  career_url: https://jobs.lever.co/mistral
+  ats_type: lever
+- name: MongoDB
+  career_url: https://boards.greenhouse.io/mongodb
+  ats_type: greenhouse
+- name: Netflix
+  career_url: https://jobs.netflix.com
+  ats_type: custom
+- name: OpenAI
+  career_url: https://jobs.ashbyhq.com/openai
+  ats_type: ashby
+- name: Palantir
+  career_url: https://jobs.lever.co/palantir
+  ats_type: lever
+- name: Perplexity AI
+  career_url: https://jobs.ashbyhq.com/perplexity
+  ats_type: ashby
+- name: Pinterest
+  career_url: https://boards.greenhouse.io/pinterest
+  ats_type: greenhouse
+- name: Plaid
+  career_url: https://jobs.lever.co/plaid
+  ats_type: lever
+- name: Renaissance Technologies
+  career_url: https://www.rentec.com/Careers.action
+  ats_type: custom
+- name: Reddit
+  career_url: https://boards.greenhouse.io/reddit
+  ats_type: greenhouse
+- name: Roblox
+  career_url: https://boards.greenhouse.io/roblox
+  ats_type: greenhouse
+- name: Scale AI
+  career_url: https://boards.greenhouse.io/scaleai
+  ats_type: greenhouse
+- name: Snowflake
+  career_url: https://jobs.ashbyhq.com/snowflake
+  ats_type: ashby
+- name: SoFi
+  career_url: https://boards.greenhouse.io/sofi
+  ats_type: greenhouse
+- name: Spotify
+  career_url: https://jobs.lever.co/spotify
+  ats_type: lever
+- name: Stripe
+  career_url: https://boards.greenhouse.io/stripe
+  ats_type: greenhouse
+- name: TikTok
+  career_url: https://lifeattiktok.com/position
+  ats_type: tiktok
+- name: Two Sigma
+  career_url: https://careers.twosigma.com
+  ats_type: custom
+- name: Uber
+  career_url: https://www.uber.com/us/en/careers/list/
+  ats_type: uber
+- name: Wayfair
+  career_url: https://www.wayfair.com/careers
+  ats_type: custom
+- name: xAI
+  career_url: https://job-boards.greenhouse.io/xai
+  ats_type: greenhouse
+- name: Yelp
+  career_url: https://www.yelp.careers
+  ats_type: custom
+- name: Zillow
+  career_url: https://www.zillow.com/careers/
+  ats_type: custom

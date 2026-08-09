@@ -2,6 +2,7 @@
 """Job Search Agent - CLI entry point."""
 
 import argparse
+import logging
 import sys
 from pathlib import Path
 
@@ -9,6 +10,10 @@ from Argus.orchestrator import Orchestrator
 
 
 def main():
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s [%(threadName)s] %(message)s",
+    )
     parser = argparse.ArgumentParser(
         description="Search jobs from target companies",
         formatter_class=argparse.RawDescriptionHelpFormatter,

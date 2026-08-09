@@ -4,6 +4,7 @@ import csv
 import json
 from datetime import datetime
 from pathlib import Path
+from threading import RLock
 from typing import List, Set
 
 from .models import Job
@@ -20,6 +21,7 @@ class JobStore:
         """
         self.output_dir = Path(output_dir)
         self._seen_jobs: Set[str] = set()
+        self._lock = RLock()
         self._load_existing_jobs()
 
     def _load_existing_jobs(self) -> None:
@@ -75,30 +77,24 @@ class JobStore:
         if not jobs:
             return 0
 
-        # Filter out duplicates
-        new_jobs = []
-        for job in jobs:
-            canonical = self._canonical_url(job.url)
-            if canonical not in self._seen_jobs:
-                self._seen_jobs.add(canonical)
-                new_jobs.append(job)
+        # Deduplication and file writes must be atomic when workers finish at
+        # the same time, especially if two companies expose the same URL.
+        with self._lock:
+            new_jobs = []
+            for job in jobs:
+                canonical = self._canonical_url(job.url)
+                if canonical not in self._seen_jobs:
+                    self._seen_jobs.add(canonical)
+                    new_jobs.append(job)
 
-        if not new_jobs:
-            return 0
+            if not new_jobs:
+                return 0
 
-        # Create directory structure
-        company_folder = self._get_company_folder(company_name)
-        company_folder.mkdir(parents=True, exist_ok=True)
-
-        # Save as JSON
-        json_path = company_folder / "jobs.json"
-        self._save_json(new_jobs, json_path)
-
-        # Save as CSV
-        csv_path = company_folder / "jobs.csv"
-        self._save_csv(new_jobs, csv_path)
-
-        return len(new_jobs)
+            company_folder = self._get_company_folder(company_name)
+            company_folder.mkdir(parents=True, exist_ok=True)
+            self._save_json(new_jobs, company_folder / "jobs.json")
+            self._save_csv(new_jobs, company_folder / "jobs.csv")
+            return len(new_jobs)
 
     def _save_json(self, jobs: List[Job], path: Path) -> None:
         """Save jobs to JSON file."""
