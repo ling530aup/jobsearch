@@ -8,6 +8,7 @@ from threading import RLock
 from typing import List, Set
 
 from .models import Job
+from .mysql_store import MySQLStore
 
 
 class JobStore:
@@ -22,6 +23,7 @@ class JobStore:
         self.output_dir = Path(output_dir)
         self._seen_jobs: Set[str] = set()
         self._lock = RLock()
+        self.mysql_store = MySQLStore()
         self._load_existing_jobs()
 
     def _load_existing_jobs(self) -> None:
@@ -64,18 +66,22 @@ class JobStore:
         safe_name = safe_name.strip().replace(" ", "_")
         return self._get_date_folder() / safe_name
 
-    def save_jobs(self, jobs: List[Job], company_name: str) -> int:
+    def save_jobs(
+        self,
+        jobs: List[Job],
+    ) -> int:
         """Save jobs to storage.
 
         Args:
             jobs: List of Job objects to save.
-            company_name: Name of the company.
 
         Returns:
             Number of new jobs saved (excluding duplicates).
         """
         if not jobs:
             return 0
+
+        company_name = jobs[0].company
 
         # Deduplication and file writes must be atomic when workers finish at
         # the same time, especially if two companies expose the same URL.
@@ -94,7 +100,12 @@ class JobStore:
             company_folder.mkdir(parents=True, exist_ok=True)
             self._save_json(new_jobs, company_folder / "jobs.json")
             self._save_csv(new_jobs, company_folder / "jobs.csv")
-            return len(new_jobs)
+            saved_count = len(new_jobs)
+
+        # Database persistence is best-effort and happens after file writes so
+        # a slow or unavailable MySQL server cannot hold the file lock.
+        self.mysql_store.save_jobs(new_jobs)
+        return saved_count
 
     def _save_json(self, jobs: List[Job], path: Path) -> None:
         """Save jobs to JSON file."""
@@ -122,7 +133,7 @@ class JobStore:
 
             if write_headers:
                 writer.writerow([
-                    "company", "title", "location", "team", "url", "source", "discovered_at"
+                    "company", "title", "location", "team", "url", "source", "discovered_at", "applied"
                 ])
 
             for job in jobs:
@@ -134,6 +145,7 @@ class JobStore:
                     job.url,
                     job.source,
                     job.discovered_at,
+                    job.applied,
                 ])
 
     def get_stats(self) -> dict:

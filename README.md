@@ -227,6 +227,52 @@ post-location-filter count, newly saved count, and elapsed time. Shared URL
 deduplication and registry writes are protected so concurrent crawls do not
 corrupt result files.
 
+#### MySQL persistence
+
+The crawler keeps writing its existing JSON/CSV files and additionally attempts
+to persist newly saved jobs to MySQL. The local connection settings are read
+from the gitignored `config/database.yaml`; environment variables
+`MYSQL_URL`, `MYSQL_HOST`, `MYSQL_PORT`, `MYSQL_USER`, `MYSQL_PASSWORD`, and
+`MYSQL_DATABASE` override those values.
+
+Provision the `jobsearch` database and its tables with
+`sql/jobsearch_schema.sql` before starting the application. The application
+only checks that the configured database is reachable; it does not create or
+modify schema objects at runtime. The schema contains:
+
+- `companies`: company identity, career URL, ATS type, and latest crawl
+  timestamp;
+- `jobs`: job details, URL-based uniqueness, timestamps, the `applied`
+  boolean used by the frontend checkbox, and the `crawl_run_id` of the run
+  that first saved the job;
+- `crawl_runs`: one row per crawl, including start/end time, status, company
+  counters, and job counters. A row is inserted when a database connection is
+  available and finalized after the crawl completes.
+
+The `jobs` table has indexes for company/date queries, run/date queries,
+application status/date queries, location lookups, and the unique
+`(company_id, canonical_url_hash)` deduplication key. MySQL errors are logged
+once and do not stop file writes.
+`save_jobs` derives the company metadata from each `Job` object; existing
+companies are looked up and updated rather than duplicated, while jobs remain
+a one-to-many child collection under that company.
+
+Example frontend query for unprocessed jobs:
+
+```sql
+SELECT j.*, c.name AS company_name
+FROM jobs j
+JOIN companies c ON c.id = j.company_id
+WHERE j.applied = FALSE
+ORDER BY j.discovered_at DESC;
+```
+
+To update the checkbox state:
+
+```sql
+UPDATE jobs SET applied = TRUE WHERE id = ?;
+```
+
 The title/location pipeline is:
 
 ```text

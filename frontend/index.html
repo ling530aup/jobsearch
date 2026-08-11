@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#101622" />
+  <title>Argus · Job Search Workspace</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/table-filters.css" />
+  <link rel="stylesheet" href="/top-navigation.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="/"><span class="brand-mark">A</span><span>ARGUS<small>JOB INTELLIGENCE</small></span></a>
+      <nav class="nav" aria-label="主导航">
+        <button class="nav-item active" data-tab="results"><span>▦</span> Job Results</button>
+        <button class="nav-item" data-tab="runs"><span>◌</span> Runs &amp; Logs</button>
+      </nav>
+      <div class="sidebar-note"><span class="pulse"></span><span>DATABASE CONNECTED</span><small>MySQL · global job library</small></div>
+    </aside>
+    <main class="workspace">
+      <section id="results-tab" class="tab-panel active">
+        <header class="page-header"><div><p class="eyebrow">GLOBAL JOB LIBRARY</p><h1>职位结果</h1><p class="subtitle">所有历史职位都从数据库读取。筛选只影响当前查看，不会改变 crawler 规则。</p></div><div class="view-switch" role="group" aria-label="结果范围"><button class="scope-button active" data-scope="latest">最近一次运行</button><button class="scope-button" data-scope="all">全部历史</button></div></header>
+        <section id="latest-run-card" class="run-summary"><div><span class="summary-label">LATEST RUN</span><strong id="latest-run-title">正在读取运行记录…</strong><span id="latest-run-detail">—</span></div><button id="open-latest-run" class="text-button">查看本次新增职位 →</button></section>
+        <section class="filters" aria-label="职位筛选"><div class="status-filter"><span>申请状态</span><div class="segmented" role="group"><button data-applied="all" class="active">全部</button><button data-applied="false">未申请</button><button data-applied="true">已申请</button></div></div><button id="clear-filters" class="clear-button">清除全部筛选</button></section>
+        <section class="table-area"><div class="table-meta"><span id="result-count">0 个职位</span><span id="loading-copy" class="muted"></span></div><div class="table-scroll"><table><thead><tr><th class="check-col">申请</th><th><label class="column-filter"><span>职位</span><input id="table-title-filter" type="search" placeholder="模糊匹配 title" aria-label="筛选职位标题" /></label></th><th><span>公司</span><button class="facet-trigger" data-facet="company" id="company-facet-trigger">筛选公司</button></th><th><span>地点</span><button class="facet-trigger" data-facet="location" id="location-facet-trigger">筛选地点</button></th><th><span>发现日期</span><button class="facet-trigger" data-facet="date" id="date-facet-trigger">筛选日期</button></th><th>来源</th><th></th></tr></thead><tbody id="jobs-body"></tbody></table></div><div id="empty-state" class="empty-state hidden"><span>⌁</span><h2>没有符合条件的职位</h2><p>调整筛选条件，或切换到全部历史查看。</p></div><button id="load-more" class="load-more hidden">加载更多职位</button></section>
+      </section>
+      <section id="runs-tab" class="tab-panel">
+        <header class="page-header"><div><p class="eyebrow">CRAWLER CONTROL</p><h1>运行与日志</h1><p class="subtitle">选择一个 crawler profile 启动搜索。profile 只影响这次抓取的配置，不会划分职位数据库。</p></div></header>
+        <section class="launch-card"><div><span class="summary-label">START A NEW RUN</span><h2>获取新的职位</h2><p>后台运行 crawler；你可以停留在页面中查看实时进度。</p></div><div class="launch-controls"><label>运行 profile<select id="run-profile" aria-label="运行 profile"></select></label><button id="start-run" class="primary-button">开始获取 <span>→</span></button></div></section>
+        <section id="active-run" class="active-run hidden"><div class="active-run-header"><div><span class="summary-label">CURRENT RUN</span><h2 id="active-run-title">正在准备任务…</h2></div><span id="run-status" class="status-badge running">RUNNING</span></div><div class="progress-track"><div id="run-progress"></div></div><div class="progress-details"><span id="run-progress-copy">准备中</span><strong id="run-progress-percent">0%</strong></div><div id="run-logs" class="log-box" aria-live="polite"></div><div id="run-complete-actions" class="complete-actions hidden"><button id="view-current-run" class="primary-button">查看本次新增职位 →</button></div></section>
+        <section class="run-history"><div class="section-title"><div><span class="summary-label">HISTORY</span><h2>历史运行</h2></div><button id="refresh-runs" class="text-button">刷新</button></div><div id="runs-list" class="runs-list"></div></section>
+      </section>
+    </main>
+  </div>
+  <section id="facet-menu" class="facet-menu hidden" aria-label="多选筛选"><div class="facet-menu-head"><strong id="facet-menu-title">筛选</strong><button id="close-facet-menu" aria-label="关闭筛选">×</button></div><input id="facet-search" type="search" placeholder="搜索选项" /><div id="facet-options" class="facet-options"></div><div class="facet-menu-actions"><button id="facet-clear" class="text-button">清除</button><button id="facet-apply" class="primary-button">应用筛选</button></div></section>
+  <div id="toast" class="toast hidden" role="status"></div>
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>

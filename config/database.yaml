@@ -1,0 +1,6 @@
+# Local development database settings. This file is gitignored.
+mysql:
+  url: jdbc:mysql://localhost:3306/
+  schema: jobsearch
+  user: ${username}
+  password: ${pwd}

@@ -36,6 +36,11 @@ class Job:
     team: Optional[str] = None
     source: str = "unknown"
     discovered_at: str = field(default_factory=lambda: datetime.now().isoformat())
+    applied: bool = False
+    # Crawl metadata is copied onto the job before persistence so storage
+    # layers do not need duplicate company arguments.
+    career_url: Optional[str] = None
+    ats_type: Optional[str] = None
 
     def to_dict(self) -> dict:
         """Convert to dictionary for JSON serialization."""

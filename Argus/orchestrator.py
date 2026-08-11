@@ -6,7 +6,7 @@ from threading import Lock
 from time import perf_counter
 import yaml
 from pathlib import Path
-from typing import List, Optional
+from typing import Callable, List, Optional
 
 from .models import Company, Job
 from .registry import CompanyRegistry
@@ -38,6 +38,7 @@ class Orchestrator:
         titles_file: str,
         output_dir: str = "job_results",
         timeout: float = 30.0,
+        progress_callback: Optional[Callable[[int, int, str, bool], None]] = None,
     ):
         """Initialize orchestrator.
 
@@ -51,7 +52,10 @@ class Orchestrator:
         self.titles_file = titles_file
         self.output_dir = output_dir
         self.timeout = timeout
+        self.progress_callback = progress_callback
         self._detector_lock = Lock()
+        self._run_stats_lock = Lock()
+        self._run_saved = 0
 
         self.registry = CompanyRegistry()
         self.store = JobStore(output_dir)
@@ -146,6 +150,7 @@ class Orchestrator:
             with self._detector_lock:
                 ats_type = self.detector.detect(company.career_url)
             self.registry.update_ats_type(company.name, ats_type)
+            company.ats_type = ats_type
             logger.info("[%s] detected ATS=%s", company.name, ats_type)
 
         # Return appropriate fetcher
@@ -181,6 +186,12 @@ class Orchestrator:
                 jobs = fetcher.fetch_job_list()
                 fetched_count = len(jobs)
 
+                # Keep company metadata with the domain objects. This lets
+                # every persistence backend use one save_jobs(jobs) contract.
+                for job in jobs:
+                    job.career_url = company.career_url
+                    job.ats_type = company.ats_type
+
                 # Filter by titles if configured
                 if self.title_filter and jobs:
                     jobs = self.title_filter.filter_jobs(jobs)
@@ -192,7 +203,9 @@ class Orchestrator:
                 location_count = len(jobs)
 
                 # Save to store
-                new_count = self.store.save_jobs(jobs, company.name)
+                new_count = self.store.save_jobs(jobs)
+                with self._run_stats_lock:
+                    self._run_saved += new_count
 
                 # Update registry
                 self.registry.update_last_crawled(company.name)
@@ -231,6 +244,10 @@ class Orchestrator:
         total_jobs = 0
         successful_companies = 0
         failed_companies = []
+        with self._run_stats_lock:
+            self._run_saved = 0
+        run_id = self.store.mysql_store.start_crawl_run(len(self.companies))
+        self.store.mysql_store.set_crawl_run_id(run_id)
 
         with ThreadPoolExecutor(max_workers=self.max_workers, thread_name_prefix="crawl") as executor:
             futures = {
@@ -239,23 +256,39 @@ class Orchestrator:
             }
             for future in as_completed(futures):
                 company = futures[future]
+                succeeded = False
                 try:
                     jobs = future.result()
                     if jobs:
                         total_jobs += len(jobs)
                         successful_companies += 1
+                        succeeded = True
                 except Exception:
                     logger.exception("[%s] worker failed", company.name)
                     failed_companies.append(company.name)
+                finally:
+                    if self.progress_callback:
+                        completed = len(futures) - sum(1 for item in futures if not item.done())
+                        self.progress_callback(completed, len(futures), company.name, succeeded)
 
         # Cleanup
         self.detector.close()
+        self.store.mysql_store.finish_crawl_run(
+            run_id,
+            status="completed",
+            companies_succeeded=successful_companies,
+            companies_failed=len(failed_companies),
+            jobs_fetched=total_jobs,
+            jobs_saved=self._run_saved,
+        )
+        self.store.mysql_store.set_crawl_run_id(None)
 
         # Summary
         logger.info("SUMMARY")
 
         stats = self.store.get_stats()
         summary = {
+            "run_id": run_id,
             "companies_crawled": successful_companies,
             "companies_failed": len(failed_companies),
             "failed_companies": failed_companies,
