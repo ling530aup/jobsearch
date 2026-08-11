@@ -90,7 +90,7 @@ class RunManager:
                 self.manager._append_log(run_id, self.format(record))
 
         handler = SearchLogHandler(self)
-        handler.setFormatter(logging.Formatter("%(levelname)s  %(message)s"))
+        handler.setFormatter(logging.Formatter("%(levelname)s [%(threadName)s] %(message)s"))
         root_logger = logging.getLogger()
         root_logger.addHandler(handler)
         try:

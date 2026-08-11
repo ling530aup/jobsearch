@@ -53,14 +53,11 @@ class Orchestrator:
         self.output_dir = output_dir
         self.timeout = timeout
         self.progress_callback = progress_callback
-        self._detector_lock = Lock()
         self._run_stats_lock = Lock()
         self._run_saved = 0
 
         self.registry = CompanyRegistry()
         self.store = JobStore(output_dir)
-        self.detector = ATSDetector(timeout=timeout)
-
         # Load configuration
         self.companies = self._load_companies()
         (
@@ -147,8 +144,11 @@ class Orchestrator:
         # Detect ATS if not specified
         if not ats_type or ats_type == "unknown":
             logger.info("[%s] detecting ATS", company.name)
-            with self._detector_lock:
-                ats_type = self.detector.detect(company.career_url)
+            # Each crawl worker owns its detector/client.  A shared detector
+            # would require a global lock around network I/O and serialize
+            # ATS detection for all companies.
+            with ATSDetector(timeout=self.timeout) as detector:
+                ats_type = detector.detect(company.career_url)
             self.registry.update_ats_type(company.name, ats_type)
             company.ats_type = ats_type
             logger.info("[%s] detected ATS=%s", company.name, ats_type)
@@ -272,7 +272,6 @@ class Orchestrator:
                         self.progress_callback(completed, len(futures), company.name, succeeded)
 
         # Cleanup
-        self.detector.close()
         self.store.mysql_store.finish_crawl_run(
             run_id,
             status="completed",
