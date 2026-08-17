@@ -1,5 +1,6 @@
 """Greenhouse ATS adapter."""
 
+import html
 import re
 from typing import List
 from urllib.parse import urlparse
@@ -26,9 +27,26 @@ class GreenhouseFetcher(CareerFetcher):
             if path_parts:
                 return path_parts[0]
 
+        try:
+            response = self.client.get(self.career_url)
+            decoded = html.unescape(response.text).replace(r"\/", "/")
+            match = re.search(
+                r'''(?:boards|job-boards)\.greenhouse\.(?:io|eu)/([^/?#"'\\]+)''',
+                decoded,
+                re.IGNORECASE,
+            ) or re.search(
+                r'''boards-api\.greenhouse\.io/v1/boards/([^/?#"'\\]+)''',
+                decoded,
+                re.IGNORECASE,
+            ) or re.search(r'''[?&]for=([^&#"']+)''', decoded, re.IGNORECASE)
+            if match:
+                return match.group(1)
+        except Exception:
+            pass
+
         # Try to find embedded token in page
         # Fallback to company name slug
-        return self.company_name.lower().replace(" ", "")
+        return re.sub(r"[^a-z0-9]", "", self.company_name.casefold())
 
     def fetch_job_list(self) -> List[Job]:
         """Fetch jobs from Greenhouse API."""

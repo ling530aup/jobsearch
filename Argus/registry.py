@@ -42,6 +42,13 @@ class CompanyRegistry:
             self._companies[company.name.lower()] = company
             self._save()
 
+    def add_many(self, companies: List[Company]) -> None:
+        """Add or update companies with one registry write."""
+        with self._lock:
+            for company in companies:
+                self._companies[company.name.lower()] = company
+            self._save()
+
     def get(self, name: str) -> Optional[Company]:
         """Get company by name."""
         return self._companies.get(name.lower())
@@ -65,6 +72,16 @@ class CompanyRegistry:
             company = self.get(name)
             if company:
                 company.ats_type = ats_type
+                self._save()
+
+    def update_detection(self, name: str, ats_type: str, career_url: str) -> None:
+        """Persist both the detected ATS and its resolved public board URL."""
+        with self._lock:
+            company = self.get(name)
+            if company:
+                company.ats_type = ats_type
+                if career_url:
+                    company.career_url = career_url
                 self._save()
 
     def update_last_crawled(self, name: str) -> None:

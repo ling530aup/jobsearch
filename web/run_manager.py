@@ -12,7 +12,9 @@ from Argus.orchestrator import Orchestrator
 class RunManager:
     """Start at most one crawler run and expose its live in-memory state."""
 
-    MAX_LOGS = 300
+    # A full profile can emit several log records per company. Keep enough
+    # history to inspect an entire large run from the dashboard.
+    MAX_LOGS = 5_000
 
     def __init__(self, root: Path, profiles: Path):
         self.root = root
@@ -130,6 +132,14 @@ class RunManager:
         finally:
             root_logger.removeHandler(handler)
 
-    def _progress(self, run_id: str, done: int, total: int, company: str, succeeded: bool) -> None:
+    def _progress(self, run_id: str, done: int, total: int, company: str, outcome: str) -> None:
         self._update(run_id, progress=done, total=total, company=company)
-        self._append_log(run_id, f"{'✓' if succeeded else '×'} {company} 完成 ({done}/{total})")
+        labels = {
+            "matched": ("✓", "发现匹配职位"),
+            "title_filtered": ("○", "已抓到职位，但没有符合标题条件"),
+            "location_filtered": ("○", "标题符合，但没有符合地点条件"),
+            "fetch_empty": ("×", "招聘源返回零职位或抓取未成功"),
+            "failed": ("!", "抓取发生未处理错误"),
+        }
+        symbol, message = labels.get(outcome, ("!", outcome))
+        self._append_log(run_id, f"{symbol} {company} 完成：{message} ({done}/{total})")

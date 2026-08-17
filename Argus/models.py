@@ -4,6 +4,7 @@ from dataclasses import dataclass, field, asdict
 from datetime import datetime
 from typing import Optional
 import json
+from urllib.parse import parse_qsl, urlparse, urlunparse
 
 
 @dataclass
@@ -58,6 +59,32 @@ class Job:
     @property
     def canonical_url(self) -> str:
         """Get canonical URL for deduplication."""
+        parsed = urlparse(self.url)
+        successfactors_job_keys = {
+            "jobreqid",
+            "jobid",
+            "job_req_id",
+            "jobpipeline",
+        }
+        job_identifier = next(
+            (
+                (key, value)
+                for key, value in parse_qsl(parsed.query, keep_blank_values=True)
+                if key.casefold() in successfactors_job_keys and value
+            ),
+            None,
+        )
+        if job_identifier and ".successfactors." in parsed.netloc.casefold():
+            key, value = job_identifier
+            return urlunparse((
+                parsed.scheme,
+                parsed.netloc,
+                parsed.path.rstrip("/"),
+                "",
+                f"{key.casefold()}={value}",
+                "",
+            )).casefold()
+
         # Remove query parameters and trailing slashes
         url = self.url.split("?")[0].rstrip("/")
         return url.lower()

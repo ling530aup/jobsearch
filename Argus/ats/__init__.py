@@ -6,6 +6,10 @@ from .greenhouse import GreenhouseFetcher
 from .lever import LeverFetcher
 from .ashby import AshbyFetcher
 from .workday import WorkdayFetcher
+from .eightfold import EightfoldFetcher
+from .successfactors import SuccessFactorsFetcher
+from .workable import WorkableFetcher
+from .smartrecruiters import SmartRecruitersFetcher
 from .generic import GenericFetcher
 from .uber import UberFetcher
 from .amazon import AmazonFetcher
@@ -20,6 +24,10 @@ __all__ = [
     "LeverFetcher",
     "AshbyFetcher",
     "WorkdayFetcher",
+    "EightfoldFetcher",
+    "SuccessFactorsFetcher",
+    "WorkableFetcher",
+    "SmartRecruitersFetcher",
     "GenericFetcher",
     "UberFetcher",
     "AmazonFetcher",

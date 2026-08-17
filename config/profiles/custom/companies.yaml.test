@@ -1,0 +1,7 @@
+companies:
+- name: Citi
+  career_url: https://jobs.citi.com/search-jobs
+  ats_type: generic
+- name: HSBC
+  career_url: https://portal.careers.hsbc.com/careers?domain=hsbc.com
+  ats_type: eightfold

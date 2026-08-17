@@ -59,29 +59,69 @@ class WorkdayFetcher(CareerFetcher):
         return jobs
 
     def _fetch_from_search_api(self) -> List[Job]:
-        """Try fetching from Workday search API."""
+        """Fetch every available page from Workday's public search API."""
         jobs = []
-
-        # Common Workday API endpoint pattern
         api_url = f"https://{self.workday_host}/wday/cxs/{self._get_tenant()}/{self.company_path}/jobs"
+        offset = 0
+        # Workday's public CXS endpoint rejects larger values (including 100)
+        # on many tenants. Its portable maximum is 20, so page through it.
+        limit = 20
+        seen_paths = set()
 
-        try:
+        while True:
             payload = {
                 "appliedFacets": {},
-                "limit": 100,
-                "offset": 0,
-                "searchText": ""
+                "limit": limit,
+                "offset": offset,
+                "searchText": "",
             }
-            response = self.client.post(
-                api_url,
-                json=payload,
-                headers={"Content-Type": "application/json"}
-            )
-            if response.status_code == 200:
+
+            try:
+                response = self.client.post(
+                    api_url,
+                    json=payload,
+                    headers={"Content-Type": "application/json"},
+                )
+            except Exception:
+                break
+
+            if response.status_code != 200:
+                break
+
+            try:
                 data = response.json()
-                jobs = self._parse_api_response(data)
-        except Exception:
-            pass
+            except ValueError:
+                break
+
+            job_postings = data.get("jobPostings", [])
+            if not isinstance(job_postings, list) or not job_postings:
+                break
+
+            for job_data in job_postings:
+                external_path = job_data.get("externalPath", "")
+                if not external_path or external_path in seen_paths:
+                    continue
+                seen_paths.add(external_path)
+                title = job_data.get("title", "")
+                if title:
+                    jobs.append(Job(
+                        company=self.company_name,
+                        title=title,
+                        url=f"https://{self.workday_host}{external_path}",
+                        location=self._extract_location(job_data),
+                        source="workday",
+                    ))
+
+            total = data.get("total")
+            offset += len(job_postings)
+            # Some tenants only include the total on the first page and return
+            # zero on later pages. A zero total must not stop pagination.
+            if len(job_postings) < limit or (isinstance(total, int) and total > 0 and offset >= total):
+                break
+
+            # Protect against malformed responses that repeat pages forever.
+            if offset >= 10_000:
+                break
 
         return jobs
 

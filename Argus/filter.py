@@ -151,10 +151,14 @@ class LocationFilter:
             return False
 
         location_lower = normalize_location(location)
+        # An explicitly remote role is eligible regardless of the office or
+        # payroll country also shown by the ATS (for example "Georgia; Remote").
+        if self._is_remote(location_lower):
+            return True
         if self.country_matcher.has_conflicting_country(location_lower):
             return False
 
-        if self._is_remote(location_lower) or self.country_matcher.matches_city(location_lower):
+        if self.country_matcher.matches_city(location_lower):
             return True
 
         for pattern in self._location_patterns:

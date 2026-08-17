@@ -18,6 +18,10 @@ from .ats import (
     LeverFetcher,
     AshbyFetcher,
     WorkdayFetcher,
+    EightfoldFetcher,
+    SuccessFactorsFetcher,
+    WorkableFetcher,
+    SmartRecruitersFetcher,
     GenericFetcher,
     UberFetcher,
     AmazonFetcher,
@@ -38,7 +42,7 @@ class Orchestrator:
         titles_file: str,
         output_dir: str = "job_results",
         timeout: float = 30.0,
-        progress_callback: Optional[Callable[[int, int, str, bool], None]] = None,
+        progress_callback: Optional[Callable[[int, int, str, str], None]] = None,
     ):
         """Initialize orchestrator.
 
@@ -55,6 +59,8 @@ class Orchestrator:
         self.progress_callback = progress_callback
         self._run_stats_lock = Lock()
         self._run_saved = 0
+        self._run_fetched = 0
+        self._company_outcomes = {}
 
         self.registry = CompanyRegistry()
         self.store = JobStore(output_dir)
@@ -85,15 +91,28 @@ class Orchestrator:
             data = yaml.safe_load(f)
 
         for company_data in data.get("companies", []):
+            name = company_data.get("name")
+            career_url = company_data.get("career_url")
+            ats_type = company_data.get("ats_type")
+            detected = self.registry.get(name) if name else None
+            if (
+                (not ats_type or ats_type == "unknown")
+                and detected
+                and detected.ats_type
+                and detected.ats_type != "unknown"
+            ):
+                ats_type = detected.ats_type
+                career_url = detected.career_url or career_url
             company = Company(
-                name=company_data.get("name"),
-                career_url=company_data.get("career_url"),
-                ats_type=company_data.get("ats_type"),
+                name=name,
+                career_url=career_url,
+                ats_type=ats_type,
             )
             companies.append(company)
 
-            # Update registry
-            self.registry.add(company)
+        # Rewriting the complete registry once per company made startup
+        # perform hundreds of serialized file writes for large profiles.
+        self.registry.add_many(companies)
 
         return companies
 
@@ -140,18 +159,36 @@ class Orchestrator:
     def _get_fetcher(self, company: Company):
         """Get appropriate fetcher for a company."""
         ats_type = company.ats_type
+        effective_url = company.career_url
 
-        # Detect ATS if not specified
-        if not ats_type or ats_type == "unknown":
-            logger.info("[%s] detecting ATS", company.name)
-            # Each crawl worker owns its detector/client.  A shared detector
-            # would require a global lock around network I/O and serialize
-            # ATS detection for all companies.
-            with ATSDetector(timeout=self.timeout) as detector:
+        # Resolve corporate career landing pages to the actual ATS board. This
+        # matters even when ats_type is already configured: passing a corporate
+        # hostname to a Workday/Greenhouse adapter produces a valid-looking but
+        # completely wrong API URL.
+        with ATSDetector(timeout=self.timeout) as detector:
+            if not ats_type or ats_type == "unknown":
+                logger.info("[%s] detecting ATS", company.name)
                 ats_type = detector.detect(company.career_url)
-            self.registry.update_ats_type(company.name, ats_type)
-            company.ats_type = ats_type
-            logger.info("[%s] detected ATS=%s", company.name, ats_type)
+                self.registry.update_ats_type(company.name, ats_type)
+                company.ats_type = ats_type
+                logger.info("[%s] detected ATS=%s", company.name, ats_type)
+            elif ats_type in detector.ATS_PATTERNS:
+                detected_type = detector.detect(company.career_url)
+                if detected_type != "unknown" and detected_type != ats_type:
+                    logger.info(
+                        "[%s] corrected stale ATS type %s -> %s",
+                        company.name,
+                        ats_type,
+                        detected_type,
+                    )
+                    ats_type = detected_type
+                    company.ats_type = ats_type
+                    self.registry.update_ats_type(company.name, ats_type)
+            if ats_type in detector.ATS_PATTERNS:
+                effective_url = detector.resolve_url(company.career_url, ats_type)
+                if effective_url != company.career_url:
+                    logger.info("[%s] resolved ATS URL: %s", company.name, effective_url)
+                self.registry.update_detection(company.name, ats_type, effective_url)
 
         # Return appropriate fetcher
         fetchers = {
@@ -159,6 +196,10 @@ class Orchestrator:
             "lever": LeverFetcher,
             "ashby": AshbyFetcher,
             "workday": WorkdayFetcher,
+            "eightfold": EightfoldFetcher,
+            "successfactors": SuccessFactorsFetcher,
+            "workable": WorkableFetcher,
+            "smartrecruiters": SmartRecruitersFetcher,
             "uber": UberFetcher,
             "amazon": AmazonFetcher,
             "meta": MetaFetcher,
@@ -167,7 +208,7 @@ class Orchestrator:
         }
 
         fetcher_class = fetchers.get(ats_type, GenericFetcher)
-        return fetcher_class(company.name, company.career_url, self.timeout)
+        return fetcher_class(company.name, effective_url, self.timeout)
 
     def crawl_company(self, company: Company) -> List[Job]:
         """Crawl jobs from a single company.
@@ -184,7 +225,21 @@ class Orchestrator:
         try:
             with self._get_fetcher(company) as fetcher:
                 jobs = fetcher.fetch_job_list()
+                if not jobs and not isinstance(fetcher, GenericFetcher):
+                    logger.info(
+                        "[%s] %s returned no jobs; trying generic fallback",
+                        company.name,
+                        fetcher.__class__.__name__,
+                    )
+                    with GenericFetcher(
+                        company.name,
+                        fetcher.career_url,
+                        self.timeout,
+                    ) as fallback:
+                        jobs = fallback.fetch_job_list()
                 fetched_count = len(jobs)
+                with self._run_stats_lock:
+                    self._run_fetched += fetched_count
 
                 # Keep company metadata with the domain objects. This lets
                 # every persistence backend use one save_jobs(jobs) contract.
@@ -201,6 +256,17 @@ class Orchestrator:
                 if self.location_filter and jobs:
                     jobs = self.location_filter.filter_jobs(jobs)
                 location_count = len(jobs)
+
+                if fetched_count == 0:
+                    outcome = "fetch_empty"
+                elif title_count == 0:
+                    outcome = "title_filtered"
+                elif location_count == 0:
+                    outcome = "location_filtered"
+                else:
+                    outcome = "matched"
+                with self._run_stats_lock:
+                    self._company_outcomes[company.name] = outcome
 
                 # Save to store
                 new_count = self.store.save_jobs(jobs)
@@ -224,6 +290,8 @@ class Orchestrator:
 
         except Exception as e:
             logger.exception("[%s] crawl failed after %.2fs: %s", company.name, perf_counter() - started_at, e)
+            with self._run_stats_lock:
+                self._company_outcomes[company.name] = "failed"
             return []
 
     def run(self) -> dict:
@@ -246,6 +314,8 @@ class Orchestrator:
         failed_companies = []
         with self._run_stats_lock:
             self._run_saved = 0
+            self._run_fetched = 0
+            self._company_outcomes = {}
         run_id = self.store.mysql_store.start_crawl_run(len(self.companies))
         self.store.mysql_store.set_crawl_run_id(run_id)
 
@@ -256,28 +326,36 @@ class Orchestrator:
             }
             for future in as_completed(futures):
                 company = futures[future]
-                succeeded = False
+                outcome = "failed"
                 try:
                     jobs = future.result()
+                    with self._run_stats_lock:
+                        outcome = self._company_outcomes.get(company.name, "failed")
                     if jobs:
                         total_jobs += len(jobs)
                         successful_companies += 1
-                        succeeded = True
+                    if outcome == "failed":
+                        failed_companies.append(company.name)
                 except Exception:
                     logger.exception("[%s] worker failed", company.name)
                     failed_companies.append(company.name)
                 finally:
                     if self.progress_callback:
                         completed = len(futures) - sum(1 for item in futures if not item.done())
-                        self.progress_callback(completed, len(futures), company.name, succeeded)
+                        self.progress_callback(completed, len(futures), company.name, outcome)
 
         # Cleanup
+        companies_fetched = sum(
+            1
+            for outcome in self._company_outcomes.values()
+            if outcome in {"matched", "title_filtered", "location_filtered"}
+        )
         self.store.mysql_store.finish_crawl_run(
             run_id,
             status="completed",
-            companies_succeeded=successful_companies,
+            companies_succeeded=companies_fetched,
             companies_failed=len(failed_companies),
-            jobs_fetched=total_jobs,
+            jobs_fetched=self._run_fetched,
             jobs_saved=self._run_saved,
         )
         self.store.mysql_store.set_crawl_run_id(None)
@@ -288,14 +366,23 @@ class Orchestrator:
         stats = self.store.get_stats()
         summary = {
             "run_id": run_id,
-            "companies_crawled": successful_companies,
+            "companies_crawled": companies_fetched,
+            "companies_matched": successful_companies,
             "companies_failed": len(failed_companies),
             "failed_companies": failed_companies,
             "total_matching_jobs": total_jobs,
+            "total_jobs_fetched": self._run_fetched,
+            "outcomes": {
+                outcome: sum(1 for value in self._company_outcomes.values() if value == outcome)
+                for outcome in {
+                    "matched", "title_filtered", "location_filtered", "fetch_empty", "failed"
+                }
+            },
             **stats,
         }
 
-        logger.info("Companies crawled: %d/%d", successful_companies, len(self.companies))
+        logger.info("Companies fetched: %d/%d", companies_fetched, len(self.companies))
+        logger.info("Companies with matching jobs: %d/%d", successful_companies, len(self.companies))
         logger.info("Total matching jobs found: %d", total_jobs)
         logger.info("Results saved to: %s", self.output_dir)
 
