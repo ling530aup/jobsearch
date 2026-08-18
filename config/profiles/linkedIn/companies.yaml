@@ -1,0 +1,569 @@
+companies:
+- name: 360T(360 Treasury Systems)
+  career_url: https://www.360t.com/careers/
+  ats_type: unknown
+- name: Accenture
+  career_url: https://www.accenture.com/gb-en/careers
+  ats_type: unknown
+- name: Adaptive
+  career_url: https://weareadaptive.com/careers/jobs/
+  ats_type: unknown
+- name: Affinidi
+  career_url: https://www.affinidi.com/careers
+  ats_type: unknown
+- name: Affirm
+  career_url: https://www.affirm.com/careers
+  ats_type: unknown
+- name: Airwallex
+  career_url: https://careers.airwallex.com/
+  ats_type: unknown
+- name: Algolia
+  career_url: https://www.algolia.com/careers
+  ats_type: unknown
+- name: Almedia
+  career_url: https://jobs.ashbyhq.com/almedia?src=LinkedIn
+  ats_type: ashby
+- name: Ant Group
+  career_url: https://talent.antgroup.com/off-campus-home
+  ats_type: unknown
+- name: Ant International
+  career_url: https://www.ant-intl.com/en/career/#Career
+  ats_type: unknown
+- name: Apron
+  career_url: https://getapron.com/careers
+  ats_type: unknown
+- name: Ardoq
+  career_url: https://careers.ardoq.com/jobs
+  ats_type: unknown
+- name: Ascendion
+  career_url: https://ascendion.com/careers/
+  ats_type: unknown
+- name: Attio
+  career_url: https://attio.com/careers
+  ats_type: unknown
+- name: Auterion
+  career_url: https://auterion.com/company/careers/
+  ats_type: unknown
+- name: Avalara
+  career_url: https://careers.avalara.com/careers-home/
+  ats_type: unknown
+- name: Backbase
+  career_url: https://www.backbase.com/careers
+  ats_type: unknown
+- name: Bank of Ireland Group
+  career_url: https://www.bankofireland.com/
+  ats_type: unknown
+- name: Barings
+  career_url: https://barings.wd1.myworkdayjobs.com/en-US/Barings
+  ats_type: workday
+- name: Barnett Waddingham
+  career_url: https://www.barnett-waddingham.co.uk/careers/
+  ats_type: unknown
+- name: Baton Corporation
+  career_url: https://jobs.ashbyhq.com/batoncorporation
+  ats_type: ashby
+- name: Benifex
+  career_url: https://careers.benifex.com/
+  ats_type: unknown
+- name: BigHand
+  career_url: https://careers.bighand.com/jobs
+  ats_type: unknown
+- name: Blinq
+  career_url: https://blinq.me/careers
+  ats_type: unknown
+- name: Bolt
+  career_url: https://bolt.eu/en/careers/
+  ats_type: unknown
+- name: Booksy
+  career_url: https://careers.booksy.com/
+  ats_type: unknown
+- name: BT Group
+  career_url: https://jobs.bt.com/
+  ats_type: unknown
+- name: ByteDance
+  career_url: https://joinbytedance.com/#/
+  ats_type: unknown
+- name: Cambridge Aerospace
+  career_url: https://cambridgeaerospace.com/careers
+  ats_type: unknown
+- name: Canva
+  career_url: https://www.lifeatcanva.com/en
+  ats_type: unknown
+- name: Capi
+  career_url: https://jobs.ashbyhq.com/capimoney
+  ats_type: ashby
+- name: Capital on Tap
+  career_url: https://www.capitalontap.com/en/company/careers/
+  ats_type: unknown
+- name: Capital One
+  career_url: https://www.capitalonecareers.com/
+  ats_type: unknown
+- name: Certn
+  career_url: https://certn.co/careers/
+  ats_type: unknown
+- name: Chainlink Labs
+  career_url: https://jobs.ashbyhq.com/chainlink-labs?src=LinkedIn
+  ats_type: ashby
+- name: Cirrus Logic
+  career_url: https://www.cirrus.com/careers/jobs
+  ats_type: unknown
+- name: Cisco
+  career_url: https://careers.cisco.com/global/en/home
+  ats_type: unknown
+- name: Civica
+  career_url: https://www.civica.com/en-gb/about-us/careers/
+  ats_type: unknown
+- name: CluePoints
+  career_url: https://cluepoints.com/who-we-are/careers/
+  ats_type: unknown
+- name: CME Group
+  career_url: https://www.cmegroup.com/careers.html
+  ats_type: unknown
+- name: ConnexAI
+  career_url: https://connex.ai/uk/careers-hub/
+  ats_type: unknown
+- name: Consensys
+  career_url: https://consensys.io/careers
+  ats_type: unknown
+- name: Constantinople
+  career_url: https://www.cxnpl.com/about-us/careers
+  ats_type: unknown
+- name: CoreWeave
+  career_url: http://www.coreweave.com/careers
+  ats_type: unknown
+- name: Crypto Finance
+  career_url: https://www.crypto-finance.com/life-at-crypto-finance/
+  ats_type: unknown
+- name: Dell Technologies
+  career_url: https://iawmqy.fa.ocs.oraclecloud.com/hcmUI/CandidateExperience/en/sites/careers
+  ats_type: oracle
+- name: Deloitte
+  career_url: https://apply.deloittece.com/en_US/careers
+  ats_type: unknown
+- name: Depop
+  career_url: https://depopcareers.com/
+  ats_type: unknown
+- name: Deutsche Bšrse Group
+  career_url: https://www.deutsche-boerse.com/dbg-en/group-careers
+  ats_type: unknown
+- name: DHL eCommerce UK
+  career_url: https://careers.dhl.com/global/en/
+  ats_type: unknown
+- name: Dojo
+  career_url: https://dojo.careers/
+  ats_type: unknown
+- name: Dolby Laboratories
+  career_url: https://jobs.dolby.com/careers
+  ats_type: unknown
+- name: DRW
+  career_url: https://www.drw.com/work-at-drw
+  ats_type: unknown
+- name: Dynatrace
+  career_url: https://www.dynatrace.com/careers/
+  ats_type: unknown
+- name: easyJet
+  career_url: https://careers.easyjet.com/en/career-areas/it-and-data
+  ats_type: unknown
+- name: EEX Group/ECC AG
+  career_url: https://www.eex-group.com/en/careers
+  ats_type: unknown
+- name: Elsevier
+  career_url: https://www.elsevier.com/about/careers
+  ats_type: unknown
+- name: Eneba
+  career_url: https://jobs.eu.lever.co/eneba
+  ats_type: unknown
+- name: Enfuce
+  career_url: https://enfuce.com/careers/
+  ats_type: unknown
+- name: Equals
+  career_url: https://equalsmoney.recruitee.com/
+  ats_type: recruitee
+- name: EssenceMediacom
+  career_url: https://www.essencemediacom.com/careers
+  ats_type: unknown
+- name: Expedia Group
+  career_url: https://careers.expediagroup.com/jobs/?
+  ats_type: unknown
+- name: Fanatics
+  career_url: https://job-boards.greenhouse.io/fanaticsfbg
+  ats_type: greenhouse
+- name: FanDuel
+  career_url: https://www.fanduel.careers/
+  ats_type: unknown
+- name: Fin
+  career_url: https://fin.ai/careers/listings
+  ats_type: unknown
+- name: First Derivative
+  career_url: https://firstderivative.com/experienced-professionals/
+  ats_type: unknown
+- name: Fitch Group
+  career_url: https://careers.fitch.group/
+  ats_type: unknown
+- name: FlexTrade
+  career_url: https://flextrade.com/careers/
+  ats_type: unknown
+- name: Flywire
+  career_url: https://www.flywire.com/company/careers#job-openings
+  ats_type: unknown
+- name: Fortinet
+  career_url: https://www.fortinet.com/corporate/careers
+  ats_type: unknown
+- name: Fundamental
+  career_url: https://fundamental.tech/careers
+  ats_type: unknown
+- name: Fuse Energy
+  career_url: https://apply.workable.com/fuseenergy/
+  ats_type: workable
+- name: Future Secure AI
+  career_url: https://www.futuresecure.ai/why-work-with-us
+  ats_type: unknown
+- name: Gamma
+  career_url: https://gammagroup.co/company/careers-vacancies/
+  ats_type: unknown
+- name: GE Vernova
+  career_url: https://careers.gevernova.com/
+  ats_type: unknown
+- name: Google DeepMind
+  career_url: https://www.google.com/about/careers/applications/
+  ats_type: unknown
+- name: Gradle Technologies
+  career_url: https://gradle.com/careers/
+  ats_type: unknown
+- name: Handelsbanken
+  career_url: https://www.handelsbanken.com/en/careers
+  ats_type: unknown
+- name: Harmattan AI
+  career_url: https://www.harmattan.ai/careers/
+  ats_type: unknown
+- name: Hasbro
+  career_url: https://job-boards.greenhouse.io/hasbro
+  ats_type: greenhouse
+- name: Hazelcast
+  career_url: https://hazelcast.pinpointhq.com/
+  ats_type: unknown
+- name: Heidi
+  career_url: https://www.heidihealth.com/en-us/careers
+  ats_type: unknown
+- name: Helsing
+  career_url: https://helsing.ai/careers
+  ats_type: unknown
+- name: HP
+  career_url: https://jobs.hp.com/
+  ats_type: unknown
+- name: Humanoid
+  career_url: https://thehumanoid.ai/careers/
+  ats_type: unknown
+- name: Hyperscience
+  career_url: https://www.hyperscience.ai/about-us/careers/
+  ats_type: unknown
+- name: insightsoftware
+  career_url: https://insightsoftware.com/careers/
+  ats_type: unknown
+- name: Instil
+  career_url: https://careers.instil.co/
+  ats_type: unknown
+- name: Intercom
+  career_url: https://www.intercom.com/careers
+  ats_type: unknown
+- name: InvestEngine
+  career_url: https://careers.investengine.com/
+  ats_type: unknown
+- name: iProov
+  career_url: https://www.iproov.com/careers
+  ats_type: unknown
+- name: IQ-EQ
+  career_url: https://iqeq.com/careers/
+  ats_type: unknown
+- name: ISS STOXX
+  career_url: https://issgovernance.wd1.myworkdayjobs.com/ISScareers
+  ats_type: workday
+- name: JTC Group
+  career_url: https://www.jtcgroup.com/jobs/
+  ats_type: unknown
+- name: Juniper Networks
+  career_url: https://careers.hpe.com/juniper
+  ats_type: unknown
+- name: King
+  career_url: https://careers.king.com/us/en/search-results
+  ats_type: unknown
+- name: Kong Inc.
+  career_url: https://konghq.com/company/careers
+  ats_type: unknown
+- name: Kraken
+  career_url: https://jobs.ashbyhq.com/kraken.com/
+  ats_type: ashby
+- name: Kyriba
+  career_url: https://www.kyriba.com/company/careers/
+  ats_type: unknown
+- name: Lam Research
+  career_url: https://www.lamresearch.com/
+  ats_type: unknown
+- name: Lead Forensics
+  career_url: https://careers.leadforensics.com/
+  ats_type: unknown
+- name: Marks and Spencer (M&S)
+  career_url: https://jobs.marksandspencer.com/job-search
+  ats_type: unknown
+- name: Marshmallow
+  career_url: https://www.marshmallow.com/jobs
+  ats_type: unknown
+- name: Medibank
+  career_url: https://careers.medibank.com.au/
+  ats_type: unknown
+- name: Micron
+  career_url: https://www.micron.com/about/careers
+  ats_type: unknown
+- name: Mitek
+  career_url: https://www.miteksystems.com/careers
+  ats_type: unknown
+- name: monday.com
+  career_url: https://www.monday.com/careers
+  ats_type: unknown
+- name: Morningstar
+  career_url: https://www.morningstar.com/company/careers
+  ats_type: unknown
+- name: NALA
+  career_url: https://apply.workable.com/nalamoney/
+  ats_type: workable
+- name: Nebius
+  career_url: https://nebius.com/careers
+  ats_type: unknown
+- name: Neko Health
+  career_url: https://jobs.ashbyhq.com/neko-health
+  ats_type: ashby
+- name: Nominet
+  career_url: https://nominet.uk/careers/
+  ats_type: unknown
+- name: OCBC
+  career_url: https://www.ocbc.com/group/careers/index.html
+  ats_type: unknown
+- name: OKX
+  career_url: https://www.okx.com/en-sg/join-us
+  ats_type: unknown
+- name: Olo
+  career_url: https://www.olo.com/people-culture#careers-listings
+  ats_type: unknown
+- name: 'On'
+  career_url: https://culture.on.com/
+  ats_type: unknown
+- name: Palantir Technologies
+  career_url: https://www.palantir.com/careers/
+  ats_type: unknown
+- name: Pebl
+  career_url: https://jobs.ashbyhq.com/pebl
+  ats_type: ashby
+- name: People First Bank
+  career_url: https://hcyt.fa.ap1.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX/jobs
+  ats_type: oracle
+- name: Perplexity
+  career_url: https://www.perplexity.ai/hub/careers
+  ats_type: unknown
+- name: Petroineos Trading Limited
+  career_url: https://www.petroineos.com/careers/career-opportunities/
+  ats_type: unknown
+- name: Philips
+  career_url: https://www.careers.philips.com/global/en/home
+  ats_type: unknown
+- name: Phorest Software
+  career_url: https://careers.phorest.com/
+  ats_type: unknown
+- name: PhysicsX
+  career_url: https://www.physicsx.ai/careers
+  ats_type: unknown
+- name: Plum
+  career_url: https://apply.workable.com/withplum/
+  ats_type: workable
+- name: Preply
+  career_url: https://preply.com/en/careers
+  ats_type: unknown
+- name: Presto
+  career_url: https://www.prestolabs.io/
+  ats_type: unknown
+- name: Propeller
+  career_url: https://www.propelleraero.com/careers/
+  ats_type: unknown
+- name: PropertyGuru Group
+  career_url: https://www.propertygurugroup.com/careers/
+  ats_type: unknown
+- name: Proton
+  career_url: https://proton.me/careers
+  ats_type: unknown
+- name: Pulsar
+  career_url: https://pulsar.com/careers/
+  ats_type: unknown
+- name: PwC Australia
+  career_url: https://jobs-au.pwc.com/experiencedhires/au/en/home
+  ats_type: unknown
+- name: Quo
+  career_url: https://www.quo.com/careers
+  ats_type: unknown
+- name: Reflection
+  career_url: https://reflection.ai/careers
+  ats_type: unknown
+- name: Reserve Bank of Australia
+  career_url: https://www.rba.gov.au/careers/careers-at-the-rba/information-technology.html
+  ats_type: unknown
+- name: RHB
+  career_url: https://rhb.wd102.myworkdayjobs.com/en-US/RHBExternalCareerSite
+  ats_type: workday
+- name: Rockstar Games
+  career_url: https://www.rockstargames.com/careers
+  ats_type: unknown
+- name: Roku
+  career_url: https://www.weareroku.com/jobs/search
+  ats_type: unknown
+- name: RWE
+  career_url: https://www.rwe.com/en/rwe-careers-portal/job-offers/
+  ats_type: unknown
+- name: S&P Global
+  career_url: https://www.spglobal.com/en/explore-s-p-global/careers
+  ats_type: unknown
+- name: Sainsbury's
+  career_url: https://sainsburys.jobs/jobs?professional_area=Tech
+  ats_type: unknown
+- name: Sedgwick
+  career_url: https://www.sedgwick.com/careers/
+  ats_type: unknown
+- name: Sensor Tower
+  career_url: https://sensortower.com/careers
+  ats_type: unknown
+- name: SGX Group
+  career_url: https://www.sgxgroup.com/
+  ats_type: unknown
+- name: Shopee
+  career_url: https://careers.shopee.sg/
+  ats_type: unknown
+- name: Shopify
+  career_url: https://www.shopify.com/careers
+  ats_type: unknown
+- name: SimCorp
+  career_url: https://www.simcorp.com/about-us/career/open-positions
+  ats_type: unknown
+- name: Snap
+  career_url: https://careers.snap.com/
+  ats_type: unknown
+- name: SociŽtŽ GŽnŽrale (__)
+  career_url: https://careers.societegenerale.com/
+  ats_type: unknown
+- name: Sony Interactive Entertainment
+  career_url: https://careers.playstation.com/
+  ats_type: unknown
+- name: SS&C
+  career_url: https://www.ssctech.com/careers/join-ssc
+  ats_type: unknown
+- name: Storio group
+  career_url: https://www.storiogroup.com/work-with-us/
+  ats_type: unknown
+- name: Stryker
+  career_url: https://careers.stryker.com/
+  ats_type: unknown
+- name: SumUp
+  career_url: https://www.sumup.com/careers/
+  ats_type: unknown
+- name: Susquehanna
+  career_url: https://careers.sig.com/jobs
+  ats_type: unknown
+- name: Swap
+  career_url: https://www.swap-commerce.com/careers
+  ats_type: unknown
+- name: Talos
+  career_url: https://www.talos.com/working/open-roles
+  ats_type: unknown
+- name: Temasek
+  career_url: https://www.temasek.com.sg/en/about-us/careers
+  ats_type: unknown
+- name: Tesco
+  career_url: https://www.tescoplc.com/careers
+  ats_type: unknown
+- name: The Trade Desk
+  career_url: https://careers.thetradedesk.com/
+  ats_type: unknown
+- name: The Walt Disney Company
+  career_url: https://www.disneycareers.com/en
+  ats_type: unknown
+- name: Thredd
+  career_url: https://www.thredd.ai/company/careers
+  ats_type: unknown
+- name: Thunes
+  career_url: https://www.thunes.com/life-at-thunes/
+  ats_type: unknown
+- name: Ticketmaster
+  career_url: https://business.ticketmaster.com/careers/
+  ats_type: unknown
+- name: Tilt
+  career_url: https://tilt.com/careers
+  ats_type: unknown
+- name: Tipalti
+  career_url: https://tipalti.com/company/careers/
+  ats_type: unknown
+- name: TMF Group
+  career_url: https://www.tmf-group.com/en/careers/
+  ats_type: unknown
+- name: Trainline
+  career_url: https://www.trainlinegroup.com/careers/en/
+  ats_type: unknown
+- name: TransFICC
+  career_url: https://transficc.com/join
+  ats_type: unknown
+- name: Traveloka
+  career_url: https://careers.traveloka.com/
+  ats_type: unknown
+- name: TreasurySpring
+  career_url: https://treasuryspring.com/careers
+  ats_type: unknown
+- name: Trintech
+  career_url: https://www.trintech.com/culture-and-careers/
+  ats_type: unknown
+- name: Twilio
+  career_url: https://jobs.twilio.com/careers
+  ats_type: unknown
+- name: UK Export Finance
+  career_url: https://www.smarsh.com/careers/
+  ats_type: unknown
+- name: UK Home Office
+  career_url: https://www.gov.uk/government/organisations/home-office
+  ats_type: unknown
+- name: Unilever
+  career_url: https://careers.unilever.com/en/search-jobs
+  ats_type: unknown
+- name: Uswitch
+  career_url: https://careers.rvu.co.uk/
+  ats_type: unknown
+- name: Validus Risk Management
+  career_url: https://www.validusrm.com/about/#careers
+  ats_type: unknown
+- name: Venti
+  career_url: https://jobs.ashbyhq.com/GoVenti
+  ats_type: ashby
+- name: Versant Media
+  career_url: https://careers.versantmedia.com/
+  ats_type: unknown
+- name: Vodafone
+  career_url: https://www.vodafonethree.com/careers/
+  ats_type: unknown
+- name: Warner Bros. Discovery
+  career_url: https://careers.wbd.com/global/en/search-results
+  ats_type: unknown
+- name: Wave Mobile Money
+  career_url: https://www.wave.com/en/careers/
+  ats_type: unknown
+- name: Wayve
+  career_url: https://wayve.firststage.co/jobs
+  ats_type: unknown
+- name: Xapo Bank
+  career_url: https://www.xapobank.com/en/careers
+  ats_type: unknown
+- name: Xero
+  career_url: https://careers.xero.com/jobs/?origin=global
+  ats_type: unknown
+- name: Yandex
+  career_url: https://yandex.com/jobs
+  ats_type: unknown
+- name: Zepz
+  career_url: https://zepz.io/careers/
+  ats_type: unknown
+- name: Zscaler
+  career_url: https://www.zscaler.com/careers
+  ats_type: unknown
+
