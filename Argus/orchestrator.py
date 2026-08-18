@@ -95,14 +95,25 @@ class Orchestrator:
             career_url = company_data.get("career_url")
             ats_type = company_data.get("ats_type")
             detected = self.registry.get(name) if name else None
-            if (
-                (not ats_type or ats_type == "unknown")
-                and detected
+            cached_type = ATSDetector._check_url_patterns(
+                detected.career_url
+            ) if detected and detected.career_url else None
+            cached_board_is_valid = bool(
+                detected
                 and detected.ats_type
                 and detected.ats_type != "unknown"
+                and cached_type == detected.ats_type
+            )
+            if (
+                cached_board_is_valid
+                and (
+                    not ats_type
+                    or ats_type == "unknown"
+                    or ats_type == detected.ats_type
+                )
             ):
                 ats_type = detected.ats_type
-                career_url = detected.career_url or career_url
+                career_url = detected.career_url
             company = Company(
                 name=name,
                 career_url=career_url,

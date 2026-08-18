@@ -2,7 +2,7 @@
 # The filter will match jobs containing these keywords
 
 # Number of companies crawled concurrently
-max_workers: 10
+max_workers: 12
 
 titles:
   - Machine Learning Engineer

@@ -207,9 +207,10 @@ class ATSDetector:
                 urls.append(url)
         return urls
 
-    def _check_url_patterns(self, url: str) -> Optional[str]:
+    @staticmethod
+    def _check_url_patterns(url: str) -> Optional[str]:
         """Check URL against known ATS patterns."""
-        for ats_type, patterns in self.ATS_PATTERNS.items():
+        for ats_type, patterns in ATSDetector.ATS_PATTERNS.items():
             for pattern in patterns:
                 if re.search(pattern, url, re.IGNORECASE):
                     return ats_type
