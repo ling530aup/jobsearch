@@ -128,7 +128,7 @@ companies:
   ats_type: generic
 - name: Barclays
   career_url: https://search.jobs.barclays
-  ats_type: workday
+  ats_type: talentbrew
 - name: BBVA
   career_url: https://bbva.wd3.myworkdayjobs.com/BBVA
   ats_type: workday
@@ -514,8 +514,8 @@ companies:
   career_url: https://www.iggroup.com/about-us/careers
   ats_type: workday
 - name: IMC Trading
-  career_url: https://www.imc.com/us/search-careers
-  ats_type: unknown
+  career_url: https://job-boards.eu.greenhouse.io/imc
+  ats_type: greenhouse
 - name: Indeed
   career_url: https://job-boards.greenhouse.io/indeed
   ats_type: greenhouse
@@ -929,7 +929,7 @@ companies:
   ats_type: unknown
 - name: Salesforce
   career_url: https://www.salesforce.com/company/careers/
-  ats_type: unknown
+  ats_type: salesforce
 - name: Santander UK
   career_url: https://www.santander.com/en/careers
   ats_type: workday
@@ -959,7 +959,7 @@ companies:
   ats_type: unknown
 - name: SEB
   career_url: https://sebgroup.com/career
-  ats_type: workday
+  ats_type: unknown
 - name: Secure Trust Bank
   career_url: https://www.securetrustbank.com/careers
   ats_type: unknown
@@ -1015,8 +1015,8 @@ companies:
   career_url: https://www.sjp.co.uk/careers
   ats_type: unknown
 - name: Standard Chartered
-  career_url: https://jobs.standardchartered.com/go/Experienced-Professional-jobs/9783657/?&feedid=363857
-  ats_type: successfactors
+  career_url: https://jobs.standardchartered.com/Home
+  ats_type: unknown
 - name: Starling Bank
   career_url: https://www.starlingbank.com/careers/
   ats_type: unknown
@@ -1030,7 +1030,7 @@ companies:
   career_url: https://www.stonex.com/en/about/careers/
   ats_type: unknown
 - name: Stripe
-  career_url: https://boards.greenhouse.io/stripe
+  career_url: https://job-boards.greenhouse.io/stripe
   ats_type: greenhouse
 - name: Sucden Financial
   career_url: https://www.sucdenfinancial.com/en/about/careers/opportunities/
