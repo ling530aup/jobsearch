@@ -5,7 +5,7 @@ import re
 from typing import List, Optional
 from urllib.parse import parse_qs, urlencode, urljoin, urlparse, urlunparse
 
-from .base import CareerFetcher
+from .base import CareerFetcher, dismiss_browser_overlays, install_browser_page_handlers
 from ..models import Job
 
 
@@ -109,6 +109,7 @@ class SuccessFactorsFetcher(CareerFetcher):
             with sync_playwright() as playwright:
                 browser = playwright.chromium.launch(headless=True)
                 page = browser.new_page()
+                install_browser_page_handlers(page)
                 try:
                     page.goto(entry_url, wait_until="domcontentloaded", timeout=self.timeout * 1000)
                     page.goto(
@@ -117,8 +118,10 @@ class SuccessFactorsFetcher(CareerFetcher):
                         timeout=self.timeout * 1000,
                     )
                     page.wait_for_timeout(2_000)
+                    dismiss_browser_overlays(page)
 
                     for _ in range(self.MAX_PAGES):
+                        dismiss_browser_overlays(page)
                         new_jobs = self._parse_jobs(page.content(), page.url)
                         for job in new_jobs:
                             if job.canonical_url not in seen_urls:

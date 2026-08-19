@@ -21,7 +21,7 @@ companies:
   career_url: https://www.algolia.com/careers
   ats_type: unknown
 - name: Almedia
-  career_url: https://jobs.ashbyhq.com/almedia?src=LinkedIn
+  career_url: https://jobs.ashbyhq.com/almedia
   ats_type: ashby
 - name: Ant Group
   career_url: https://talent.antgroup.com/off-campus-home
@@ -87,7 +87,7 @@ companies:
   career_url: https://cambridgeaerospace.com/careers
   ats_type: unknown
 - name: Canva
-  career_url: https://www.lifeatcanva.com/en
+  career_url: https://www.lifeatcanva.com/en/jobs/
   ats_type: unknown
 - name: Capi
   career_url: https://jobs.ashbyhq.com/capimoney
@@ -102,7 +102,7 @@ companies:
   career_url: https://certn.co/careers/
   ats_type: unknown
 - name: Chainlink Labs
-  career_url: https://jobs.ashbyhq.com/chainlink-labs?src=LinkedIn
+  career_url: https://jobs.ashbyhq.com/chainlink-labs
   ats_type: ashby
 - name: Cirrus Logic
   career_url: https://www.cirrus.com/careers/jobs
@@ -155,9 +155,6 @@ companies:
 - name: Dolby Laboratories
   career_url: https://jobs.dolby.com/careers
   ats_type: unknown
-- name: DRW
-  career_url: https://www.drw.com/work-at-drw
-  ats_type: unknown
 - name: Dynatrace
   career_url: https://www.dynatrace.com/careers/
   ats_type: unknown
@@ -183,7 +180,7 @@ companies:
   career_url: https://www.essencemediacom.com/careers
   ats_type: unknown
 - name: Expedia Group
-  career_url: https://careers.expediagroup.com/jobs/?
+  career_url: https://careers.expediagroup.com/jobs/
   ats_type: unknown
 - name: Fanatics
   career_url: https://job-boards.greenhouse.io/fanaticsfbg
@@ -448,7 +445,7 @@ companies:
   ats_type: unknown
 - name: Sony Interactive Entertainment
   career_url: https://careers.playstation.com/
-  ats_type: unknown
+  ats_type: greenhouse
 - name: SS&C
   career_url: https://www.ssctech.com/careers/join-ssc
   ats_type: unknown
@@ -566,4 +563,3 @@ companies:
 - name: Zscaler
   career_url: https://www.zscaler.com/careers
   ats_type: unknown
-

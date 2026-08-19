@@ -3,7 +3,7 @@
 import re
 from typing import List, Tuple
 
-from .base import CareerFetcher
+from .base import CareerFetcher, dismiss_browser_overlays, install_browser_page_handlers
 from ..models import Job
 
 
@@ -30,6 +30,7 @@ class GoogleFetcher(CareerFetcher):
             with sync_playwright() as p:
                 browser = p.chromium.launch(headless=True)
                 page = browser.new_page()
+                install_browser_page_handlers(page)
 
                 page_num = 1
                 max_pages = 200  # Safety limit
@@ -41,6 +42,7 @@ class GoogleFetcher(CareerFetcher):
                     try:
                         page.goto(url, wait_until="networkidle", timeout=self.timeout * 1000)
                         page.wait_for_timeout(2000)
+                        dismiss_browser_overlays(page)
                     except Exception as e:
                         print(f"Error loading page {page_num}: {e}")
                         break

@@ -10,6 +10,12 @@ from .eightfold import EightfoldFetcher
 from .successfactors import SuccessFactorsFetcher
 from .workable import WorkableFetcher
 from .smartrecruiters import SmartRecruitersFetcher
+from .oracle import OracleFetcher
+from .recruitee import RecruiteeFetcher
+from .personio import PersonioFetcher
+from .bamboohr import BambooHRFetcher
+from .talentbrew import TalentBrewFetcher
+from .apple import AppleFetcher
 from .generic import GenericFetcher
 from .uber import UberFetcher
 from .amazon import AmazonFetcher
@@ -28,6 +34,12 @@ __all__ = [
     "SuccessFactorsFetcher",
     "WorkableFetcher",
     "SmartRecruitersFetcher",
+    "OracleFetcher",
+    "RecruiteeFetcher",
+    "PersonioFetcher",
+    "BambooHRFetcher",
+    "TalentBrewFetcher",
+    "AppleFetcher",
     "GenericFetcher",
     "UberFetcher",
     "AmazonFetcher",

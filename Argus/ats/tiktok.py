@@ -2,7 +2,7 @@
 
 from typing import List
 
-from .base import CareerFetcher
+from .base import CareerFetcher, dismiss_browser_overlays, install_browser_page_handlers
 from ..models import Job
 
 
@@ -30,6 +30,7 @@ class TikTokFetcher(CareerFetcher):
                 browser = p.chromium.launch(headless=True)
                 context = browser.new_context()
                 page = context.new_page()
+                install_browser_page_handlers(page)
 
                 all_jobs = []
 
@@ -47,12 +48,14 @@ class TikTokFetcher(CareerFetcher):
                 # Load the careers page
                 page.goto(self.CAREERS_URL, wait_until="networkidle", timeout=self.timeout * 1000)
                 page.wait_for_timeout(3000)
+                dismiss_browser_overlays(page)
 
                 # Click through pagination - find the highest page number available
                 max_pages = 500
                 current_page = 1
 
                 while current_page < max_pages:
+                    dismiss_browser_overlays(page)
                     current_page += 1
 
                     # Try to click the next page number

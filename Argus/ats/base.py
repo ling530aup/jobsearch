@@ -8,6 +8,131 @@ import httpx
 from ..models import Job
 
 
+COOKIE_ACCEPT_SELECTORS = (
+    "#onetrust-accept-btn-handler",
+    "#accept-recommended-btn-handler",
+    "button[data-testid*='accept' i]",
+    "button[id*='accept' i][id*='cookie' i]",
+    "button[class*='accept' i][class*='cookie' i]",
+)
+
+COOKIE_ACCEPT_LABELS = (
+    "Accept all", "Accept all cookies", "Allow all", "Allow all cookies",
+    "I agree", "Agree and continue", "Accept cookies", "Accept Cookies",
+    "Consent", "Got it",
+)
+
+DISMISS_LABELS = (
+    "Dismiss", "Close", "No thanks", "No, thanks", "Not now",
+    "Maybe later", "Continue without accepting",
+)
+
+BROWSER_USER_AGENT = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+)
+BROWSER_HEADERS = {
+    "Accept-Language": "en-US,en;q=0.9",
+}
+
+
+def install_browser_page_handlers(page) -> None:
+    """Install non-blocking handlers before navigating a Playwright page."""
+    page.on("dialog", lambda dialog: dialog.accept())
+
+
+def create_browser_context(browser):
+    """Create a normal browser context for sites that reject bare HTTP clients."""
+    return browser.new_context(
+        user_agent=BROWSER_USER_AGENT,
+        locale="en-US",
+        viewport={"width": 1440, "height": 900},
+        extra_http_headers=BROWSER_HEADERS,
+    )
+
+
+def dismiss_browser_overlays(page) -> int:
+    """Accept cookie consent and close common modal overlays when present.
+
+    Career sites use many consent providers and often place them in iframes.
+    Keep this best-effort and narrowly target buttons so application controls
+    are never clicked accidentally.
+    """
+    clicked = 0
+    try:
+        page.keyboard.press("Escape")
+    except Exception:
+        pass
+
+    targets = [page]
+    try:
+        targets.extend(frame for frame in page.frames if frame != page.main_frame)
+    except Exception:
+        pass
+
+    for target in targets:
+        accepted = False
+        for selector in COOKIE_ACCEPT_SELECTORS:
+            try:
+                control = target.locator(selector).first
+                if control.count() and control.is_visible(timeout=150):
+                    control.click(timeout=1_000)
+                    clicked += 1
+                    accepted = True
+                    break
+            except Exception:
+                continue
+        if not accepted:
+            for label in COOKIE_ACCEPT_LABELS:
+                try:
+                    control = target.get_by_role("button", name=label, exact=True).first
+                    if control.count() and control.is_visible(timeout=100):
+                        control.click(timeout=1_000)
+                        clicked += 1
+                        accepted = True
+                        break
+                except Exception:
+                    continue
+
+        # Cookie consent takes priority. Then close newsletter, locale and
+        # sign-in promotions which can cover pagination controls.
+        for label in DISMISS_LABELS:
+            try:
+                control = target.get_by_role("button", name=label, exact=True).first
+                if control.count() and control.is_visible(timeout=100):
+                    control.click(timeout=1_000)
+                    clicked += 1
+                    break
+            except Exception:
+                continue
+    return clicked
+
+
+def scroll_page_to_bottom(page) -> bool:
+    """Scroll a page when its document has a usable scrolling element.
+
+    During navigation some sites briefly expose a document without a body.
+    Calling ``document.body.scrollHeight`` in that window raises a Playwright
+    ``TypeError`` and can abort an otherwise recoverable crawl.
+    """
+    try:
+        return bool(page.evaluate(
+            """() => {
+                const scrollingElement = document.scrollingElement
+                    || document.documentElement
+                    || document.body;
+                if (!scrollingElement) return false;
+                window.scrollTo(0, scrollingElement.scrollHeight || 0);
+                return true;
+            }"""
+        ))
+    except Exception:
+        # A page can also be replaced/detached while a navigation is in
+        # progress. Treat that like a missing scrolling element; the caller
+        # decides whether to retry navigation or stop this scroll pass.
+        return False
+
+
 class RetryingClient(httpx.Client):
     """HTTP client with bounded retries for transient crawler failures."""
 
@@ -20,15 +145,24 @@ class RetryingClient(httpx.Client):
         httpx.RemoteProtocolError,
         httpx.WriteError,
     )
-
-    def __init__(self, *args, retry_attempts: int = 3, **kwargs):
+    def __init__(self, *args, retry_attempts: int = 2, **kwargs):
         super().__init__(*args, **kwargs)
         self.retry_attempts = max(1, retry_attempts)
+        self.last_status_code = None
 
     def request(self, method: str, url, **kwargs):
         for attempt in range(self.retry_attempts):
+            response = None
             try:
                 response = super().request(method, url, **kwargs)
+                self.last_status_code = response.status_code
+                if response.status_code in {403, 451}:
+                    # A 403 is generally a policy decision, not a transient
+                    # transport failure. Do not hammer the host with retries;
+                    # callers can fall back to the browser path instead. Do
+                    # not impose a host-wide delay either: with many workers,
+                    # one blocked company must not stall unrelated requests.
+                    return response
                 if response.status_code not in self.RETRYABLE_STATUS_CODES:
                     return response
                 if attempt == self.retry_attempts - 1:
@@ -36,7 +170,13 @@ class RetryingClient(httpx.Client):
             except self.RETRYABLE_EXCEPTIONS:
                 if attempt == self.retry_attempts - 1:
                     raise
-            time.sleep(0.4 * (2 ** attempt))
+            retry_after = 0.0
+            if response is not None:
+                try:
+                    retry_after = min(float(response.headers.get("Retry-After", 0)), 10.0)
+                except (TypeError, ValueError):
+                    retry_after = 0.0
+            time.sleep(max(retry_after, 0.4 * (2 ** attempt)))
 
 
 def create_http_client(timeout: float) -> RetryingClient:
@@ -48,11 +188,20 @@ def create_http_client(timeout: float) -> RetryingClient:
             max_keepalive_connections=5,
         ),
         headers={
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            "User-Agent": BROWSER_USER_AGENT,
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Cache-Control": "no-cache",
         },
         follow_redirects=True,
-        retry_attempts=3,
+        # Normal career sites need only a couple of hops (HTTP -> HTTPS,
+        # apex -> www, then the careers page). Bound malformed redirect loops
+        # so one company cannot consume the full request timeout repeatedly.
+        max_redirects=8,
+        # One retry is enough for a transient 5xx/connection reset while
+        # avoiding the large latency multiplier when many companies are
+        # unavailable.  403/404 are returned immediately above.
+        retry_attempts=2,
     )
 
 

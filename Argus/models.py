@@ -60,28 +60,34 @@ class Job:
     def canonical_url(self) -> str:
         """Get canonical URL for deduplication."""
         parsed = urlparse(self.url)
-        successfactors_job_keys = {
+        # A number of older and white-label career sites put the only stable
+        # requisition identifier in the query string.  Dropping the complete
+        # query made every result on URLs such as ``/job?jobId=...`` collapse
+        # into one job.  Keep only known identity fields; tracking and search
+        # parameters are still discarded.
+        job_identifier_keys = {
             "jobreqid",
             "jobid",
             "job_req_id",
             "jobpipeline",
+            "positionid",
+            "requisitionid",
+            "reqid",
+            "job_id",
         }
-        job_identifier = next(
-            (
-                (key, value)
-                for key, value in parse_qsl(parsed.query, keep_blank_values=True)
-                if key.casefold() in successfactors_job_keys and value
-            ),
-            None,
+        job_identifiers = sorted(
+            (key.casefold(), value)
+            for key, value in parse_qsl(parsed.query, keep_blank_values=True)
+            if key.casefold() in job_identifier_keys and value
         )
-        if job_identifier and ".successfactors." in parsed.netloc.casefold():
-            key, value = job_identifier
+        if job_identifiers:
+            query = "&".join(f"{key}={value}" for key, value in job_identifiers)
             return urlunparse((
                 parsed.scheme,
                 parsed.netloc,
                 parsed.path.rstrip("/"),
                 "",
-                f"{key.casefold()}={value}",
+                query,
                 "",
             )).casefold()
 

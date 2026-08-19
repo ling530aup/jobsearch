@@ -25,7 +25,15 @@ titles:
   - Software Development
   - Software Development Engineer
   - Senior Software Development Engineer
-
+  # little strange
+  - Senior Engineer
+  - Product Engineer
+  - Platform Engineer
+  - Systems Engineer
+  - Data Engineer
+  - AI Engineer
+  - Applied AI Engineer
+  - Software Engineering
 
 
 
@@ -53,3 +61,4 @@ exclude_levels:
   - manager
   - principal
   - director
+  - junior

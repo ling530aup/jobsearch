@@ -2,7 +2,7 @@
 
 from typing import List
 
-from .base import CareerFetcher
+from .base import CareerFetcher, dismiss_browser_overlays, install_browser_page_handlers
 from ..models import Job
 
 
@@ -30,6 +30,7 @@ class UberFetcher(CareerFetcher):
                 browser = p.chromium.launch(headless=True)
                 context = browser.new_context()
                 page = context.new_page()
+                install_browser_page_handlers(page)
 
                 all_results = []
 
@@ -47,10 +48,12 @@ class UberFetcher(CareerFetcher):
                 # Load the careers page
                 page.goto(self.CAREERS_URL, wait_until="networkidle", timeout=self.timeout * 1000)
                 page.wait_for_timeout(3000)
+                dismiss_browser_overlays(page)
 
                 # Click "Show more openings" button repeatedly to load all jobs
                 max_clicks = 100
                 for _ in range(max_clicks):
+                    dismiss_browser_overlays(page)
                     try:
                         show_more = page.locator("button:has-text('Show more openings')")
                         if show_more.is_visible(timeout=2000):

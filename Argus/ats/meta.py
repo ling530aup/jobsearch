@@ -2,7 +2,12 @@
 
 from typing import List
 
-from .base import CareerFetcher
+from .base import (
+    CareerFetcher,
+    dismiss_browser_overlays,
+    install_browser_page_handlers,
+    scroll_page_to_bottom,
+)
 from ..models import Job
 
 
@@ -30,6 +35,7 @@ class MetaFetcher(CareerFetcher):
                 browser = p.chromium.launch(headless=True)
                 context = browser.new_context()
                 page = context.new_page()
+                install_browser_page_handlers(page)
 
                 all_jobs = []
 
@@ -49,6 +55,7 @@ class MetaFetcher(CareerFetcher):
                 # Load the careers page
                 page.goto(self.CAREERS_URL, wait_until="networkidle", timeout=self.timeout * 1000)
                 page.wait_for_timeout(3000)
+                dismiss_browser_overlays(page)
 
                 # Scroll to load more jobs
                 max_scrolls = 50
@@ -56,8 +63,10 @@ class MetaFetcher(CareerFetcher):
                 no_change_count = 0
 
                 for _ in range(max_scrolls):
+                    dismiss_browser_overlays(page)
                     # Scroll to bottom
-                    page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+                    if not scroll_page_to_bottom(page):
+                        break
                     page.wait_for_timeout(1500)
 
                     # Check if we got new results

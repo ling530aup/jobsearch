@@ -25,5 +25,7 @@ locations:
 # Levels to exclude from results
 # Available levels: staff, principal, lead, director, manager, head, vp, junior
 exclude_levels:
-  - staff
+  - manager
   - principal
+  - director
+  - junior

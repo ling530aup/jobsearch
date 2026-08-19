@@ -22,6 +22,12 @@ from .ats import (
     SuccessFactorsFetcher,
     WorkableFetcher,
     SmartRecruitersFetcher,
+    OracleFetcher,
+    RecruiteeFetcher,
+    PersonioFetcher,
+    BambooHRFetcher,
+    TalentBrewFetcher,
+    AppleFetcher,
     GenericFetcher,
     UberFetcher,
     AmazonFetcher,
@@ -103,6 +109,10 @@ class Orchestrator:
                 and detected.ats_type
                 and detected.ats_type != "unknown"
                 and cached_type == detected.ats_type
+                and ATSDetector.is_public_board_url(
+                    detected.career_url,
+                    detected.ats_type,
+                )
             )
             if (
                 cached_board_is_valid
@@ -113,6 +123,11 @@ class Orchestrator:
                 )
             ):
                 ats_type = detected.ats_type
+                # A registry URL has already been resolved and validated as a
+                # public ATS board. Reusing it avoids re-detecting hundreds of
+                # corporate landing pages on every run. In particular, do not
+                # let add_many() below replace that working URL with the
+                # profile's corporate URL before crawling starts.
                 career_url = detected.career_url
             company = Company(
                 name=name,
@@ -177,12 +192,13 @@ class Orchestrator:
         # hostname to a Workday/Greenhouse adapter produces a valid-looking but
         # completely wrong API URL.
         with ATSDetector(timeout=self.timeout) as detector:
-            if not ats_type or ats_type == "unknown":
+            if not ats_type or ats_type in {"unknown", "generic", "custom"}:
                 logger.info("[%s] detecting ATS", company.name)
-                ats_type = detector.detect(company.career_url)
-                self.registry.update_ats_type(company.name, ats_type)
-                company.ats_type = ats_type
-                logger.info("[%s] detected ATS=%s", company.name, ats_type)
+                detected_type = detector.detect(company.career_url)
+                if detected_type != "unknown" or not ats_type:
+                    ats_type = detected_type
+                    company.ats_type = ats_type
+                logger.info("[%s] detected ATS=%s", company.name, detected_type)
             elif ats_type in detector.ATS_PATTERNS:
                 detected_type = detector.detect(company.career_url)
                 if detected_type != "unknown" and detected_type != ats_type:
@@ -194,15 +210,45 @@ class Orchestrator:
                     )
                     ats_type = detected_type
                     company.ats_type = ats_type
-                    self.registry.update_ats_type(company.name, ats_type)
+                elif detected_type == "unknown":
+                    # A cached ATS type can become stale when a company
+                    # changes careers vendors. Do not keep sending a stale
+                    # adapter to a URL that current detection cannot verify.
+                    logger.info(
+                        "[%s] clearing stale ATS type %s; detection returned unknown",
+                        company.name,
+                        ats_type,
+                    )
+                    ats_type = "unknown"
+                    company.ats_type = ats_type
             if ats_type in detector.ATS_PATTERNS:
                 effective_url = detector.resolve_url(company.career_url, ats_type)
                 if effective_url != company.career_url:
                     logger.info("[%s] resolved ATS URL: %s", company.name, effective_url)
-                self.registry.update_detection(company.name, ats_type, effective_url)
+            elif detector.resolved_url and detector.resolved_url != company.career_url:
+                # The detector already followed a redirect. Reuse its final
+                # page for GenericFetcher instead of starting another client
+                # at the original URL and repeating the 301/302 chain.
+                effective_url = detector.resolved_url
+                logger.info(
+                    "[%s] reusing final redirected URL: %s",
+                    company.name,
+                    effective_url,
+                )
 
-        # Return appropriate fetcher
-        fetchers = {
+        # Do not persist a merely detected URL yet. Corporate pages often
+        # contain links to a parent, subsidiary or vendor asset; cache the
+        # resolution only after its fetcher proves that it returns jobs.
+        company.ats_type = ats_type
+        company.career_url = effective_url
+
+        fetcher_class = self._fetcher_classes().get(ats_type, GenericFetcher)
+        return fetcher_class(company.name, effective_url, self.timeout)
+
+    @staticmethod
+    def _fetcher_classes() -> dict:
+        """Map detected ATS names to their complete-catalogue adapters."""
+        return {
             "greenhouse": GreenhouseFetcher,
             "lever": LeverFetcher,
             "ashby": AshbyFetcher,
@@ -211,15 +257,18 @@ class Orchestrator:
             "successfactors": SuccessFactorsFetcher,
             "workable": WorkableFetcher,
             "smartrecruiters": SmartRecruitersFetcher,
+            "oracle": OracleFetcher,
+            "recruitee": RecruiteeFetcher,
+            "personio": PersonioFetcher,
+            "bamboohr": BambooHRFetcher,
+            "talentbrew": TalentBrewFetcher,
+            "apple": AppleFetcher,
             "uber": UberFetcher,
             "amazon": AmazonFetcher,
             "meta": MetaFetcher,
             "google": GoogleFetcher,
             "tiktok": TikTokFetcher,
         }
-
-        fetcher_class = fetchers.get(ats_type, GenericFetcher)
-        return fetcher_class(company.name, effective_url, self.timeout)
 
     def crawl_company(self, company: Company) -> List[Job]:
         """Crawl jobs from a single company.
@@ -232,23 +281,68 @@ class Orchestrator:
         """
         started_at = perf_counter()
         logger.info("[%s] crawl started", company.name)
+        original_career_url = company.career_url
 
         try:
             with self._get_fetcher(company) as fetcher:
                 jobs = fetcher.fetch_job_list()
-                if not jobs and not isinstance(fetcher, GenericFetcher):
+                discovered_type = getattr(fetcher, "discovered_ats_type", "")
+                discovered_url = getattr(fetcher, "discovered_ats_url", "")
+                discovered_class = self._fetcher_classes().get(discovered_type)
+                if (
+                    discovered_class
+                    and discovered_class is not fetcher.__class__
+                    and discovered_url
+                ):
                     logger.info(
-                        "[%s] %s returned no jobs; trying generic fallback",
+                        "[%s] browser discovered ATS=%s at %s; retrying with %s",
+                        company.name,
+                        discovered_type,
+                        discovered_url,
+                        discovered_class.__name__,
+                    )
+                    with discovered_class(
+                        company.name,
+                        discovered_url,
+                        self.timeout,
+                    ) as discovered_fetcher:
+                        discovered_jobs = discovered_fetcher.fetch_job_list()
+                    if discovered_jobs:
+                        jobs = discovered_jobs
+                        company.ats_type = discovered_type
+                        company.career_url = discovered_url
+                if not jobs and not isinstance(fetcher, GenericFetcher):
+                    fetcher_client = getattr(fetcher, "_client", None)
+                    blocked_by_http = bool(
+                        fetcher_client
+                        and getattr(fetcher_client, "last_status_code", None)
+                        in {403, 451}
+                    )
+                    fallback_url = (
+                        original_career_url
+                        if blocked_by_http
+                        else fetcher.career_url
+                    )
+                    logger.info(
+                        "[%s] %s returned no jobs%s; trying generic fallback at %s",
                         company.name,
                         fetcher.__class__.__name__,
+                        " after HTTP block" if blocked_by_http else "",
+                        fallback_url,
                     )
                     with GenericFetcher(
                         company.name,
-                        fetcher.career_url,
+                        fallback_url,
                         self.timeout,
                     ) as fallback:
                         jobs = fallback.fetch_job_list()
                 fetched_count = len(jobs)
+                if fetched_count:
+                    self.registry.update_detection(
+                        company.name,
+                        company.ats_type or "unknown",
+                        company.career_url,
+                    )
                 with self._run_stats_lock:
                     self._run_fetched += fetched_count
 
