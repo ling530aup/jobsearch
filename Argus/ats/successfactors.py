@@ -5,7 +5,12 @@ import re
 from typing import List, Optional
 from urllib.parse import parse_qs, urlencode, urljoin, urlparse, urlunparse
 
-from .base import CareerFetcher, dismiss_browser_overlays, install_browser_page_handlers
+from .base import (
+    CareerFetcher,
+    dismiss_browser_overlays,
+    goto_browser_page,
+    install_browser_page_handlers,
+)
 from ..models import Job
 
 
@@ -111,11 +116,11 @@ class SuccessFactorsFetcher(CareerFetcher):
                 page = browser.new_page()
                 install_browser_page_handlers(page)
                 try:
-                    page.goto(entry_url, wait_until="domcontentloaded", timeout=self.timeout * 1000)
-                    page.goto(
+                    goto_browser_page(page, entry_url, self.timeout)
+                    goto_browser_page(
+                        page,
                         self._job_search_url(entry_url),
-                        wait_until="domcontentloaded",
-                        timeout=self.timeout * 1000,
+                        self.timeout,
                     )
                     page.wait_for_timeout(2_000)
                     dismiss_browser_overlays(page)

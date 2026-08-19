@@ -10,6 +10,7 @@ from .base import (
     CareerFetcher,
     create_browser_context,
     dismiss_browser_overlays,
+    goto_browser_page,
     install_browser_page_handlers,
     scroll_page_to_bottom,
 )
@@ -428,11 +429,7 @@ class GenericFetcher(CareerFetcher):
         last_error = None
         for attempt in range(2):
             try:
-                page.goto(
-                    url,
-                    wait_until="domcontentloaded",
-                    timeout=self.timeout * 1000,
-                )
+                goto_browser_page(page, url, self.timeout)
                 return
             except Exception as exc:
                 last_error = exc

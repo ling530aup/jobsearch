@@ -2,7 +2,13 @@
 
 from typing import List
 
-from .base import CareerFetcher, dismiss_browser_overlays, install_browser_page_handlers
+from .base import (
+    CareerFetcher,
+    create_browser_context,
+    dismiss_browser_overlays,
+    goto_browser_page,
+    install_browser_page_handlers,
+)
 from ..models import Job
 
 
@@ -28,7 +34,7 @@ class UberFetcher(CareerFetcher):
         try:
             with sync_playwright() as p:
                 browser = p.chromium.launch(headless=True)
-                context = browser.new_context()
+                context = create_browser_context(browser)
                 page = context.new_page()
                 install_browser_page_handlers(page)
 
@@ -46,7 +52,7 @@ class UberFetcher(CareerFetcher):
                 page.on("response", handle_response)
 
                 # Load the careers page
-                page.goto(self.CAREERS_URL, wait_until="networkidle", timeout=self.timeout * 1000)
+                goto_browser_page(page, self.CAREERS_URL, self.timeout)
                 page.wait_for_timeout(3000)
                 dismiss_browser_overlays(page)
 

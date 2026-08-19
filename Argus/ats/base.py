@@ -41,6 +41,30 @@ def install_browser_page_handlers(page) -> None:
     page.on("dialog", lambda dialog: dialog.accept())
 
 
+def goto_browser_page(page, url: str, timeout: float):
+    """Navigate without treating a slow load event as a failed page.
+
+    Many careers pages continue loading analytics, chat and personalization
+    resources indefinitely. ``page.goto(..., wait_until="domcontentloaded")``
+    can therefore raise even though the document is already usable. Commit
+    means the response/navigation started; the short best-effort load-state
+    wait gives normal pages time to finish without blocking job extraction.
+    """
+    response = page.goto(
+        url,
+        wait_until="commit",
+        timeout=timeout * 1000,
+    )
+    try:
+        page.wait_for_load_state(
+            "domcontentloaded",
+            timeout=min(timeout * 1000, 8_000),
+        )
+    except Exception:
+        pass
+    return response
+
+
 def create_browser_context(browser):
     """Create a normal browser context for sites that reject bare HTTP clients."""
     return browser.new_context(

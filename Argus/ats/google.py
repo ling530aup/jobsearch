@@ -3,7 +3,13 @@
 import re
 from typing import List, Tuple
 
-from .base import CareerFetcher, dismiss_browser_overlays, install_browser_page_handlers
+from .base import (
+    CareerFetcher,
+    create_browser_context,
+    dismiss_browser_overlays,
+    goto_browser_page,
+    install_browser_page_handlers,
+)
 from ..models import Job
 
 
@@ -29,7 +35,8 @@ class GoogleFetcher(CareerFetcher):
         try:
             with sync_playwright() as p:
                 browser = p.chromium.launch(headless=True)
-                page = browser.new_page()
+                context = create_browser_context(browser)
+                page = context.new_page()
                 install_browser_page_handlers(page)
 
                 page_num = 1
@@ -40,7 +47,7 @@ class GoogleFetcher(CareerFetcher):
                     url = f"{self.BASE_URL}?page={page_num}"
 
                     try:
-                        page.goto(url, wait_until="networkidle", timeout=self.timeout * 1000)
+                        goto_browser_page(page, url, self.timeout)
                         page.wait_for_timeout(2000)
                         dismiss_browser_overlays(page)
                     except Exception as e:
@@ -63,6 +70,7 @@ class GoogleFetcher(CareerFetcher):
                     if page_num % 10 == 0:
                         print(f"    Fetched {len(jobs)} jobs so far...")
 
+                context.close()
                 browser.close()
 
         except Exception as e:
