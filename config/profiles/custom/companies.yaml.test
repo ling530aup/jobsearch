@@ -1,0 +1,49 @@
+companies:
+- name: Uber
+  career_url: https://jobs.uber.com/en/jobs/
+  ats_type: uber
+- name: Elastic
+  career_url: https://boards.greenhouse.io/elastic
+  ats_type: greenhouse
+- name: SEB
+  career_url: https://sebgroup.com/career
+  ats_type: unknown
+- name: Stripe
+  career_url: https://job-boards.greenhouse.io/stripe
+  ats_type: greenhouse
+- name: SAP
+  career_url: https://jobs.sap.com
+  ats_type: unknown
+- name: Standard Chartered
+  career_url: https://jobs.standardchartered.com/Home
+  ats_type: unknown
+- name: Optiver
+  career_url: https://www.optiver.com/join-us/
+  ats_type: unknown
+- name: Visa
+  career_url: https://www.visa.co.uk/careers.html
+  ats_type: workday
+- name: RBC Capital Markets
+  career_url: https://jobs.rbc.com/ca/en
+  ats_type: unknown
+- name: Wells Fargo
+  career_url: https://www.wellsfargojobs.com
+  ats_type: unknown
+- name: Wise
+  career_url: https://wise.jobs/
+  ats_type: unknown
+- name: UBS
+  career_url: https://www.ubs.com/global/en/careers.html
+  ats_type: unknown
+- name: Yelp
+  career_url: https://www.yelp.careers/us/en
+  ats_type: custom
+- name: Société Générale
+  career_url: https://careers.societegenerale.com/en
+  ats_type: unknown
+- name: Siemens
+  career_url: https://www.siemens.com/en-us/company/jobs/
+  ats_type: unknown
+- name: Koch Supply & Trading
+  career_url: https://koch.avature.net/en_US/careers/SearchJobs/
+  ats_type: unknown

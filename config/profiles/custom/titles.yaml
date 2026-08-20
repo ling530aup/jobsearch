@@ -29,13 +29,15 @@ titles:
   - Senior Engineer
   - Product Engineer
   - Platform Engineer
-  - Systems Engineer
-  - Data Engineer
+#  - Systems Engineer
+ # - Data Engineer
   - AI Engineer
-  - Applied AI Engineer
+#  - Applied AI Engineer
   - Software Engineering
   - Vice President
   - Associate Vice President
+  - AVP
+  - VP
 
 
 
