@@ -41,6 +41,8 @@ class AmazonFetcher(CareerFetcher):
                 if not job_list:
                     break
 
+                new_jobs = 0
+                known_urls = {job.canonical_url for job in jobs}
                 for job_data in job_list:
                     job_id = job_data.get("id_icims")
                     title = job_data.get("title", "")
@@ -48,18 +50,28 @@ class AmazonFetcher(CareerFetcher):
                     team = job_data.get("business_category", "")
 
                     if job_id and title:
-                        jobs.append(Job(
+                        job = Job(
                             company=self.company_name,
                             title=title,
                             url=self.JOB_URL_TEMPLATE.format(job_id=job_id),
                             location=location,
                             team=team,
                             source="amazon",
-                        ))
+                        )
+                        if job.canonical_url in known_urls:
+                            continue
+                        known_urls.add(job.canonical_url)
+                        jobs.append(job)
+                        new_jobs += 1
 
                 # Check if we've fetched all jobs
                 total_hits = data.get("hits", 0)
                 if len(jobs) >= total_hits or len(job_list) < limit:
+                    break
+
+                if new_jobs == 0:
+                    # The endpoint accepted a new offset but returned the
+                    # same page; further offsets would only repeat it.
                     break
 
                 offset += limit

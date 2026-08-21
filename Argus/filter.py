@@ -140,6 +140,11 @@ class LocationFilter:
         self.allow_remote = allow_remote
         self._location_patterns = set(self.locations)
         self.country_matcher = CountryLocationMatcher(self.locations)
+        self._country_patterns = {
+            pattern
+            for pattern in self._location_patterns
+            if self.country_matcher.is_country_name(pattern)
+        }
 
     def _is_remote(self, location: str) -> bool:
         """Check remote only when the profile explicitly enables it."""
@@ -150,39 +155,50 @@ class LocationFilter:
         if not location:
             return False
 
+        # Some ATS cards expose the location as a quoted attribute, such as
+        # ``'London, United Kingdom'``. Remove only wrapping quote artifacts;
+        # punctuation inside the value still separates real locations.
+        location = str(location).strip().strip("'\"").strip()
+        if not location:
+            return False
         location_lower = normalize_location(location)
         # An explicitly remote role is eligible regardless of the office or
         # payroll country also shown by the ATS (for example "Georgia; Remote").
         if self._is_remote(location_lower):
             return True
-        if self.country_matcher.has_conflicting_country(location_lower):
+        if self.country_matcher.has_conflicting_country(location):
             return False
 
-        if self.country_matcher.matches_city(location_lower):
+        if self.country_matcher.matches_country(location):
             return True
 
+        if self.country_matcher.matches_city(location):
+            return True
+
+        location_components = {
+            normalize_location(component)
+            for component in re.split(r"[,;|\n]+", str(location))
+            if normalize_location(component)
+        }
         for pattern in self._location_patterns:
-            # Short values such as HK must be whole tokens to avoid false hits.
-            if len(pattern) <= 3:
-                if re.search(rf"(?<!\w){re.escape(pattern)}(?!\w)", location_lower):
-                    return True
-            elif pattern in location_lower or self._fuzzy_location_match(pattern, location_lower):
+            # Countries are handled via aliases/codes above. Other configured
+            # values must match a complete geographic component, so York does
+            # not match New York and China does not match Chinatown.
+            if pattern in self._country_patterns:
+                continue
+            if pattern in location_components or self._fuzzy_location_match(
+                pattern,
+                location_components,
+            ):
                 return True
         return False
 
     @staticmethod
-    def _fuzzy_location_match(pattern: str, location: str) -> bool:
+    def _fuzzy_location_match(pattern: str, location_components: Set[str]) -> bool:
         """Allow minor spelling variations for explicit non-country values."""
-        pattern_words = pattern.split()
-        location_words = location.split()
-        width = len(pattern_words)
-        windows = (
-            " ".join(location_words[index:index + width])
-            for index in range(len(location_words) - width + 1)
-        )
         return any(
-            SequenceMatcher(None, pattern, window).ratio() >= 0.85
-            for window in windows
+            SequenceMatcher(None, pattern, component).ratio() >= 0.85
+            for component in location_components
         )
 
     def matches(self, job_location: str) -> bool:

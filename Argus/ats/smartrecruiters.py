@@ -37,12 +37,14 @@ class SmartRecruitersFetcher(CareerFetcher):
             if not isinstance(postings, list) or not postings:
                 break
 
+            new_ids = 0
             for item in postings:
                 posting_id = item.get("id")
                 title = item.get("name")
                 if not posting_id or posting_id in seen_ids or not title:
                     continue
                 seen_ids.add(posting_id)
+                new_ids += 1
                 location = item.get("location") or {}
                 location_name = location.get("fullLocation") if isinstance(location, dict) else ""
                 if isinstance(location, dict) and location.get("remote"):
@@ -60,7 +62,7 @@ class SmartRecruitersFetcher(CareerFetcher):
 
             offset += len(postings)
             total = data.get("totalFound")
-            if len(postings) < self.PAGE_SIZE or (
+            if new_ids == 0 or len(postings) < self.PAGE_SIZE or (
                 isinstance(total, int) and offset >= total
             ):
                 break

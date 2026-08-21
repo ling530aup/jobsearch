@@ -22,6 +22,8 @@ from .amazon import AmazonFetcher
 from .meta import MetaFetcher
 from .google import GoogleFetcher
 from .tiktok import TikTokFetcher
+from .salesforce import SalesforceFetcher
+from .phenom import PhenomFetcher
 
 __all__ = [
     "CareerFetcher",
@@ -46,4 +48,6 @@ __all__ = [
     "MetaFetcher",
     "GoogleFetcher",
     "TikTokFetcher",
+    "SalesforceFetcher",
+    "PhenomFetcher",
 ]

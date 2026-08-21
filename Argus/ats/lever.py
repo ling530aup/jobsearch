@@ -46,18 +46,32 @@ class LeverFetcher(CareerFetcher):
         """Fetch jobs from Lever."""
         jobs = []
 
-        # Lever jobs endpoint (returns HTML by default, JSON with ?mode=json)
-        api_url = f"https://api.lever.co/v0/postings/{self.company_slug}"
+        # Ask explicitly for JSON.  A stale/misdetected board can still
+        # answer 200 with an HTML challenge or landing page, so validate the
+        # payload before treating it as an API result.
+        api_url = f"https://api.lever.co/v0/postings/{self.company_slug}?mode=json"
 
         try:
             response = self.client.get(api_url)
             if response.status_code == 200:
-                data = response.json()
+                try:
+                    data = response.json()
+                except ValueError:
+                    # Do not surface a JSON decoder traceback for a valid
+                    # HTTP response that simply is not Lever JSON.  Reuse
+                    # the body first; it avoids another request when a proxy
+                    # or white-label board returned usable posting HTML.
+                    jobs = self._parse_html_jobs(getattr(response, "text", ""))
+                    return jobs or self._fetch_from_html()
                 if isinstance(data, list):
                     for job_data in data:
                         job = self._parse_job(job_data)
                         if job:
                             jobs.append(job)
+                else:
+                    jobs = self._parse_html_jobs(getattr(response, "text", ""))
+                    if not jobs:
+                        jobs = self._fetch_from_html()
             else:
                 # Try fetching from HTML page
                 jobs = self._fetch_from_html()

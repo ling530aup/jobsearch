@@ -16,12 +16,13 @@ class ATSDetector:
         "greenhouse": [
             r"boards\.greenhouse\.io",
             r"job-boards\.greenhouse\.io",
+            r"(?:boards|job-boards)\.[a-z0-9-]+\.greenhouse\.io",
             r"boards\.greenhouse\.eu",
             r"greenhouse\.io/embed",
             r"api\.greenhouse\.io",
         ],
         "lever": [
-            r"jobs\.lever\.co",
+            r"jobs(?:\.[a-z0-9-]+)?\.lever\.co",
             r"lever\.co/embed",
         ],
         "ashby": [
@@ -55,6 +56,8 @@ class ATSDetector:
         "tribepad": [r"tribepad"],
         "talentbrew": [r"(?:tbcdn\.talentbrew\.com|\.talentbrew\.com)"],
         "apple": [r"jobs\.apple\.com/(?:[a-z]{2}-[a-z]{2}/)?search"],
+        "salesforce": [r"salesforce\.com/company/careers(?:/|$)"],
+        "phenom": [r"phenompeople\.com"],
     }
 
     HTML_INDICATORS = {
@@ -66,6 +69,8 @@ class ATSDetector:
             "lever-jobs-container",
             "lever-job-title",
             "jobs.lever.co",
+            "jobs.eu.lever.co",
+            "leverlistitems",
         ],
         "ashby": [
             "ashby-job-posting",
@@ -82,9 +87,9 @@ class ATSDetector:
             "/api/apply/v2/jobs",
         ],
         "successfactors": [
-            "successfactors",
             "careerjobsearchcontroller",
             "portalcareer?company=",
+            "portalcareer?career_company=",
         ],
         "workable": ["apply.workable.com"],
         "smartrecruiters": ["smartrecruiters.com"],
@@ -100,6 +105,8 @@ class ATSDetector:
         "tribepad": ["tribepad"],
         "talentbrew": ["tbcdn.talentbrew.com", "radancy", "talentbrew"],
         "apple": ["jobs.apple.com"],
+        "salesforce": ["salesforce.com/company/careers"],
+        "phenom": ["phenompeople", "ph-search-results", "data-ph-id"],
     }
 
     def __init__(self, timeout: float = 15.0):
@@ -144,16 +151,51 @@ class ATSDetector:
                 ):
                     return "talentbrew"
 
+                # Webflow-hosted Greenhouse widgets often keep only the
+                # board token in a data attribute and assemble the public API
+                # URL in JavaScript. It is a reliable signal only when that
+                # same document includes the Greenhouse boards API template.
+                if self._webflow_greenhouse_board_url(response.text):
+                    return "greenhouse"
+
+                # Phenom search pages often embed links to the employer's
+                # Workday requisitions. Those links are individual apply
+                # targets, not proof that Workday is the catalogue source;
+                # selecting one here drops the rest of the Phenom catalogue.
+                # Leave the page as generic so its rendered paginator can
+                # enumerate the complete result set.
+                page_text = response.text.casefold()
+                if (
+                    "phenompeople" in page_text
+                    and (
+                        "ph-search-results" in page_text
+                        or "data-ph-at-id" in page_text
+                        or "ph-href" in page_text
+                    )
+                ):
+                    return "phenom"
+
+                # PCSX is Eightfold's first-party public state. Check it
+                # before generic outbound links: job descriptions and footer
+                # widgets can contain unrelated SuccessFactors apply URLs.
+                if re.search(r'''<code[^>]+id=["']pcsx-data["']''', response.text, re.I):
+                    return "eightfold"
+
                 candidate = self._best_candidate_url(
                     self._extract_candidate_urls(response.text, str(response.url))
                 )
                 if candidate:
                     candidate_type = self._check_url_patterns(candidate)
-                    if candidate_type != "greenhouse" or self._greenhouse_candidate_is_usable(candidate):
-                        return candidate_type or "unknown"
-
-                if re.search(r'''<code[^>]+id=["']pcsx-data["']''', response.text, re.I):
-                    return "eightfold"
+                    # Avature's shared privacy/help links are commonly
+                    # present on a customer's portal. They identify the
+                    # vendor, never the employer's public job endpoint.
+                    if candidate_type == "avature":
+                        candidate_type = None
+                    if candidate_type and (
+                        candidate_type != "greenhouse"
+                        or self._greenhouse_candidate_is_usable(candidate)
+                    ):
+                        return candidate_type
 
                 ats_type = self._check_html_content(response.text)
                 # A bare Eightfold brand/script mention without a valid public
@@ -192,6 +234,14 @@ class ATSDetector:
             and self.is_public_board_url(str(response.url), ats_type)
         ):
             return self._normalize_ats_url(str(response.url), ats_type)
+        if ats_type == "avature":
+            # The employer-hosted portal is the board. Do not replace it with
+            # a shared avature.net privacy/help asset linked from its footer.
+            return str(response.url) or career_url
+        if ats_type == "greenhouse":
+            webflow_board_url = self._webflow_greenhouse_board_url(response.text)
+            if webflow_board_url:
+                return webflow_board_url
         candidates = [
             candidate_url
             for candidate_url in self._extract_candidate_urls(response.text, str(response.url))
@@ -247,6 +297,20 @@ class ATSDetector:
             return isinstance(data, dict) and isinstance(data.get("jobs"), list)
         except Exception:
             return False
+
+    @staticmethod
+    def _webflow_greenhouse_board_url(page_html: str) -> str:
+        """Return a Greenhouse board encoded in a Webflow widget, if any."""
+        if "boards-api.greenhouse.io/v1/boards/" not in page_html.casefold():
+            return ""
+        match = re.search(
+            r'''\bdata-board-id\s*=\s*["']([a-z0-9][a-z0-9_-]*)["']''',
+            page_html,
+            re.IGNORECASE,
+        )
+        if not match:
+            return ""
+        return f"https://boards.greenhouse.io/{match.group(1)}"
 
     @classmethod
     def _best_candidate_url(
@@ -308,10 +372,34 @@ class ATSDetector:
             parts = [part for part in path.split("/") if part]
             if host.startswith("boards-api."):
                 return len(parts) >= 3 and parts[:2] == ["v1", "boards"]
-            return bool(parts and parts[0] not in {"embed", "v1"})
+            # Greenhouse serves shared JavaScript, locale and translation
+            # resources from hosts such as ``job-boards.cdn.greenhouse.io``.
+            # They are not job boards, despite matching the broad vendor
+            # hostname pattern.  Accept only the public board host family;
+            # the optional regional label covers e.g. job-boards.eu.
+            public_board_host = bool(re.fullmatch(
+                r"(?:boards|job-boards)(?:\.[a-z]{2,3})?\.greenhouse\.(?:io|eu)",
+                host,
+            ))
+            return public_board_host and bool(
+                parts and parts[0] not in {"embed", "v1", "locales"}
+            )
         if detected_type == "workable":
             parts = [part for part in path.split("/") if part]
-            return bool(parts and parts[0] != "j")
+            # Browser traffic includes Workable's shared API endpoint
+            # ``/api/v3/accounts/{slug}/jobs``.  Its first path segment is
+            # not an employer slug, and normalizing it produced the invalid
+            # ``accounts/api/jobs`` request.  Public boards start with the
+            # account slug (followed optionally by ``/jobs`` or ``/j/...``).
+            return bool(parts and parts[0] not in {"j", "api"})
+        if detected_type == "smartrecruiters":
+            parts = [part for part in path.split("/") if part]
+            # Shared account/application routes have no company identifier.
+            # Treating them as a board causes API calls for a fictitious
+            # company such as ``my-applications``.
+            return bool(parts and parts[0] not in {
+                "my-applications", "login", "signup", "job-alerts",
+            })
         if detected_type == "workday" and "myworkdaysite.com" in host:
             parts = [part for part in path.split("/") if part]
             return not (parts == ["recruiting"])
@@ -335,6 +423,30 @@ class ATSDetector:
             return "/careers" in path
         if detected_type == "talentbrew":
             return not host.startswith("tbcdn.")
+        if detected_type == "recruitee":
+            # ``career.recruitee.com`` is Recruitee's shared platform page,
+            # not an employer subdomain.  Calling its public offers endpoint
+            # always returns 404 and can make an unrelated page look like a
+            # valid ATS board.
+            return host not in {
+                "recruitee.com", "www.recruitee.com", "career.recruitee.com",
+            }
+        if detected_type == "phenom":
+            # ``cdn.phenompeople.com/CareerConnectResources`` and the
+            # ``content-*.phenompeople.com`` family are shared JavaScript,
+            # image, and configuration resources, not employer job boards.
+            # Caching one as a board makes the next run append
+            # ``/search-results`` to an asset URL. Employer-hosted Phenom
+            # pages (including a company's own careers domain) are resolved
+            # from the source page instead.
+            return not (
+                host.endswith(".phenompeople.com")
+                and (
+                    host.startswith("cdn.")
+                    or host.startswith("assets.")
+                    or host.startswith("content-")
+                )
+            )
         if detected_type == "taleo":
             return not path.endswith("/profile.ftl")
         return True
@@ -367,6 +479,15 @@ class ATSDetector:
             "greenhouse", "lever", "ashby", "workable", "smartrecruiters"
         } and parts:
             path = "/" + parts[0]
+            if ats_type == "lever" and re.fullmatch(
+                r"jobs\.[a-z0-9-]+\.lever\.co",
+                parsed.netloc,
+                re.IGNORECASE,
+            ):
+                # Lever's regional hosts mirror the same public board/API.
+                # Store the canonical host so later retries and registry
+                # entries never depend on a regional front-end route.
+                parsed = parsed._replace(netloc="jobs.lever.co")
 
         return urlunparse(parsed._replace(
             path=path,

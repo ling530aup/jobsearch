@@ -61,6 +61,8 @@ class TikTokFetcher(CareerFetcher):
                 current_page = 1
 
                 while current_page < max_pages:
+                    if self.stop_requested():
+                        break
                     dismiss_browser_overlays(page)
                     current_page += 1
 

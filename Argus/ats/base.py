@@ -1,11 +1,15 @@
 """Base interface for career page fetchers."""
 
 from abc import ABC, abstractmethod
+import logging
 import time
 from typing import List, Optional
 import httpx
 
 from ..models import Job
+
+
+logger = logging.getLogger(__name__)
 
 
 COOKIE_ACCEPT_SELECTORS = (
@@ -34,6 +38,45 @@ BROWSER_USER_AGENT = (
 BROWSER_HEADERS = {
     "Accept-Language": "en-US,en;q=0.9",
 }
+
+
+def is_access_challenge_page(page_html: str) -> bool:
+    """Return whether a response is an access-verification interstitial.
+
+    This intentionally identifies the interstitial itself rather than a page
+    that merely embeds a CAPTCHA widget.  A crawler must not keep paginating
+    a Cloudflare/Akamai verification document: it contains no public jobs and
+    repeated requests make a later legitimate retry less likely to succeed.
+    """
+    text = (page_html or "").casefold()
+    cloudflare_challenge = (
+        "challenges.cloudflare.com" in text
+        or "cf-chl-" in text
+        or "__cf_chl_" in text
+    )
+    challenge_copy = any(
+        marker in text
+        for marker in (
+            "just a moment...",
+            "enable javascript and cookies to continue",
+            "attention required | cloudflare",
+            "checking your browser before accessing",
+        )
+    )
+    return cloudflare_challenge and challenge_copy
+
+
+def is_access_challenge_response(response) -> bool:
+    """Return whether response metadata explicitly identifies a WAF challenge."""
+    try:
+        waf_action = str(response.headers.get("x-amzn-waf-action", "")).casefold()
+        status_code = response.status_code
+    except (AttributeError, TypeError):
+        return False
+    # AWS WAF's challenge response is intentionally an empty HTTP 202, so it
+    # cannot be recognised from page text. It is an access-verification flow,
+    # not an asynchronously accepted jobs request.
+    return status_code == 202 and waf_action == "challenge"
 
 
 def install_browser_page_handlers(page) -> None:
@@ -169,13 +212,25 @@ class RetryingClient(httpx.Client):
         httpx.RemoteProtocolError,
         httpx.WriteError,
     )
-    def __init__(self, *args, retry_attempts: int = 2, **kwargs):
+    def __init__(
+        self,
+        *args,
+        retry_attempts: int = 2,
+        **kwargs,
+    ):
         super().__init__(*args, **kwargs)
         self.retry_attempts = max(1, retry_attempts)
         self.last_status_code = None
+        self.stop_event = None
+        self._insecure_certificate_client = None
+
+    def _ensure_not_cancelled(self) -> None:
+        if self.stop_event is not None and self.stop_event.is_set():
+            raise RuntimeError("company crawl cancelled")
 
     def request(self, method: str, url, **kwargs):
         for attempt in range(self.retry_attempts):
+            self._ensure_not_cancelled()
             response = None
             try:
                 response = super().request(method, url, **kwargs)
@@ -192,6 +247,12 @@ class RetryingClient(httpx.Client):
                 if attempt == self.retry_attempts - 1:
                     return response
             except self.RETRYABLE_EXCEPTIONS:
+                if self._is_certificate_verification_error():
+                    response = self._request_with_system_certificate_fallback(
+                        method, url, **kwargs,
+                    )
+                    self.last_status_code = response.status_code
+                    return response
                 if attempt == self.retry_attempts - 1:
                     raise
             retry_after = 0.0
@@ -201,6 +262,46 @@ class RetryingClient(httpx.Client):
                 except (TypeError, ValueError):
                     retry_after = 0.0
             time.sleep(max(retry_after, 0.4 * (2 ** attempt)))
+
+    @staticmethod
+    def _is_certificate_verification_error() -> bool:
+        """Return whether the active exception is a missing local CA chain."""
+        import sys
+        exception = sys.exception()
+        return "certificate_verify_failed" in str(exception).casefold()
+
+    def _request_with_system_certificate_fallback(self, method: str, url, **kwargs):
+        """Retry only CA-chain failures without changing normal HTTP policy.
+
+        Some public career portals ship an incomplete intermediate chain that
+        Chromium accepts through the OS store while Python/httpx rejects.  A
+        one-time fallback keeps those pages on the fast HTTP path instead of
+        forcing slow browser pagination. It is never used for HTTP status
+        errors or ordinary transport failures.
+        """
+        if self._insecure_certificate_client is None:
+            logger.warning(
+                "TLS verification failed for a public career endpoint; "
+                "retrying that request without certificate validation"
+            )
+            self._insecure_certificate_client = httpx.Client(
+                verify=False,
+                timeout=self.timeout,
+                limits=httpx.Limits(
+                    max_connections=10,
+                    max_keepalive_connections=5,
+                ),
+                headers=dict(self.headers),
+                follow_redirects=self.follow_redirects,
+                max_redirects=self.max_redirects,
+            )
+        return self._insecure_certificate_client.request(method, url, **kwargs)
+
+    def close(self) -> None:
+        if self._insecure_certificate_client is not None:
+            self._insecure_certificate_client.close()
+            self._insecure_certificate_client = None
+        super().close()
 
 
 def create_http_client(timeout: float) -> RetryingClient:
@@ -237,13 +338,25 @@ class CareerFetcher(ABC):
         self.career_url = career_url
         self.timeout = timeout
         self._client: Optional[httpx.Client] = None
+        self._stop_event = None
 
     @property
     def client(self) -> httpx.Client:
         """Get or create HTTP client."""
         if self._client is None:
             self._client = create_http_client(self.timeout)
+            self._client.stop_event = self._stop_event
         return self._client
+
+    def set_stop_event(self, stop_event) -> None:
+        """Attach the orchestrator cancellation signal to this fetcher."""
+        self._stop_event = stop_event
+        if self._client is not None:
+            self._client.stop_event = stop_event
+
+    def stop_requested(self) -> bool:
+        """Return whether the enclosing crawl run was cancelled."""
+        return bool(self._stop_event is not None and self._stop_event.is_set())
 
     @abstractmethod
     def fetch_job_list(self) -> List[Job]:

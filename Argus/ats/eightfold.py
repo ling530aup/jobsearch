@@ -15,8 +15,30 @@ class EightfoldFetcher(CareerFetcher):
     """Fetch all publicly listed jobs from Eightfold career portals."""
 
     PAGE_SIZE = 10
-    PAGE_WORKERS = 3
+    # PCSX currently caps public responses at ten positions even when a
+    # larger ``num``/``size`` is supplied. A small bounded fan-out avoids
+    # turning a 1,000+ job catalogue into hundreds of serial round trips.
+    PAGE_WORKERS = 6
     MAX_POSITIONS = 10_000
+
+    @classmethod
+    def _format_locations(cls, value) -> str:
+        """Flatten Eightfold's string, object, and nested location shapes."""
+        if isinstance(value, str):
+            return value.strip()
+        if isinstance(value, list):
+            locations = [cls._format_locations(item) for item in value]
+            return "; ".join(dict.fromkeys(item for item in locations if item))
+        if not isinstance(value, dict):
+            return ""
+        for key in ("fullLocation", "formattedAddress", "locationName", "name"):
+            if value.get(key):
+                return str(value[key]).strip()
+        return ", ".join(
+            str(value[key]).strip()
+            for key in ("city", "state", "region", "country", "countryName")
+            if value.get(key)
+        )
 
     def fetch_job_list(self) -> List[Job]:
         entry_url = self._resolve_entry_url()
@@ -64,16 +86,18 @@ class EightfoldFetcher(CareerFetcher):
             if total is None and isinstance(data.get("count"), int):
                 total = data["count"]
 
+            new_ids = 0
             for position in positions:
                 position_id = position.get("id")
                 if not position_id or position_id in seen_ids:
                     continue
                 seen_ids.add(position_id)
+                new_ids += 1
                 title = position.get("posting_name") or position.get("name")
                 if not title:
                     continue
-                locations = position.get("locations") or []
-                location = ", ".join(str(item) for item in locations) if locations else position.get("location", "")
+                locations = position.get("locations") or position.get("location") or ""
+                location = self._format_locations(locations)
                 team = position.get("department") or position.get("business_unit") or ""
                 jobs.append(Job(
                     company=self.company_name,
@@ -85,7 +109,11 @@ class EightfoldFetcher(CareerFetcher):
                 ))
 
             offset += len(positions)
-            if len(positions) < self.PAGE_SIZE or (total is not None and offset >= total):
+            if (
+                new_ids == 0
+                or len(positions) < self.PAGE_SIZE
+                or (total is not None and offset >= total)
+            ):
                 break
 
         return jobs
@@ -122,6 +150,8 @@ class EightfoldFetcher(CareerFetcher):
         )
         api_url = f"{api_origin}/api/pcsx/search"
         def fetch_page(offset: int):
+            if self.stop_requested():
+                return {}, []
             try:
                 response = self.client.get(
                     api_url,
@@ -172,12 +202,8 @@ class EightfoldFetcher(CareerFetcher):
                 if not position_id or not title or position_id in seen_ids:
                     continue
                 seen_ids.add(position_id)
-                locations = position.get("locations") or []
-                location = (
-                    "; ".join(str(item) for item in locations)
-                    if isinstance(locations, list)
-                    else str(locations)
-                )
+                locations = position.get("locations") or position.get("location") or ""
+                location = self._format_locations(locations)
                 position_url = position.get("positionUrl") or f"/careers/job/{position_id}"
                 jobs.append(Job(
                     company=self.company_name,

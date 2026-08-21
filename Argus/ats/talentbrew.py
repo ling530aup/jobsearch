@@ -15,7 +15,11 @@ from ..models import Job
 class TalentBrewFetcher(GenericFetcher):
     """Fetch all TalentBrew pages using their public search result HTML."""
 
-    PAGE_WORKERS = 3
+    # TalentBrew exposes an explicit total but commonly caps public pages at
+    # ten postings. A bounded per-company pool avoids hundreds of serial
+    # requests for large catalogues such as Disney without changing global
+    # crawler concurrency.
+    PAGE_WORKERS = 8
     MAX_PAGES = 1_000
 
     def fetch_job_list(self) -> List[Job]:
@@ -44,6 +48,8 @@ class TalentBrewFetcher(GenericFetcher):
             return self._job_detail_links_only(jobs, first_url)
 
         def fetch_page(page_number: int) -> List[Job]:
+            if self.stop_requested():
+                return []
             page_url = self._page_url(first_url, page_number)
             try:
                 page_response = self.client.get(page_url)

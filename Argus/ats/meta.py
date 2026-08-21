@@ -10,6 +10,7 @@ from .base import (
     install_browser_page_handlers,
     scroll_page_to_bottom,
 )
+from .generic import GenericFetcher
 from ..models import Job
 
 
@@ -42,15 +43,23 @@ class MetaFetcher(CareerFetcher):
                 all_jobs = []
 
                 def handle_response(response):
-                    if "graphql" in response.url:
-                        try:
-                            data = response.json()
-                            # Extract jobs from GraphQL response
-                            job_search = data.get("data", {}).get("job_search_with_featured_jobs", {})
-                            job_list = job_search.get("all_jobs", [])
-                            all_jobs.extend(job_list)
-                        except Exception:
-                            pass
+                    content_type = (response.headers.get("content-type") or "").casefold()
+                    if "graphql" not in response.url.casefold() and "json" not in content_type:
+                        return
+                    try:
+                        data = response.json()
+                        # Keep compatibility with the former exact GraphQL
+                        # path, then scan the response for the current nested
+                        # job records. Meta has changed the wrapper/query
+                        # names several times without changing the public
+                        # posting fields.
+                        job_search = data.get("data", {}).get(
+                            "job_search_with_featured_jobs", {}
+                        ) if isinstance(data, dict) else {}
+                        all_jobs.extend(job_search.get("all_jobs", []))
+                        all_jobs.extend(self._extract_job_records(data))
+                    except Exception:
+                        pass
 
                 page.on("response", handle_response)
 
@@ -65,6 +74,8 @@ class MetaFetcher(CareerFetcher):
                 no_change_count = 0
 
                 for _ in range(max_scrolls):
+                    if self.stop_requested():
+                        break
                     dismiss_browser_overlays(page)
                     # Scroll to bottom
                     if not scroll_page_to_bottom(page):
@@ -79,6 +90,22 @@ class MetaFetcher(CareerFetcher):
                     else:
                         no_change_count = 0
                         prev_count = len(all_jobs)
+
+                # Some deployments expose the jobs in rendered links even
+                # when the GraphQL response is wrapped under a new key. Use
+                # the shared link parser as an in-page, no-extra-request
+                # fallback before closing the browser.
+                if not all_jobs:
+                    parser = GenericFetcher(
+                        self.company_name,
+                        page.url,
+                        self.timeout,
+                    )
+                    all_jobs.extend({
+                        "id": job.url.rsplit("/", 1)[-1],
+                        "title": job.title,
+                        "locations": [job.location] if job.location else [],
+                    } for job in parser._extract_jobs_from_html(page.content(), page.url))
 
                 browser.close()
 
@@ -113,3 +140,36 @@ class MetaFetcher(CareerFetcher):
             print(f"Error fetching Meta jobs: {e}")
 
         return jobs
+
+    @staticmethod
+    def _extract_job_records(data) -> List[dict]:
+        """Find Meta job-shaped records in changing GraphQL response wrappers."""
+        records = []
+        seen = set()
+        title_keys = ("title", "job_title", "jobTitle", "name")
+        id_keys = ("id", "job_id", "jobId", "requisition_id", "requisitionId")
+
+        def visit(value):
+            if isinstance(value, list):
+                for item in value:
+                    visit(item)
+                return
+            if not isinstance(value, dict):
+                return
+            title = next((value.get(key) for key in title_keys if value.get(key)), "")
+            job_id = next((value.get(key) for key in id_keys if value.get(key)), "")
+            keys = {str(key).casefold() for key in value}
+            looks_like_job = bool(
+                {"locations", "location", "teams", "team", "job_family"} & keys
+            ) or any("job" in key or "requisition" in key for key in keys)
+            if title and job_id and looks_like_job:
+                marker = str(job_id)
+                if marker not in seen:
+                    seen.add(marker)
+                    records.append(value)
+            for nested in value.values():
+                if isinstance(nested, (dict, list)):
+                    visit(nested)
+
+        visit(data)
+        return records

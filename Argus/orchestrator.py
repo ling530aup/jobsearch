@@ -1,8 +1,8 @@
 """Concurrent crawl orchestration for the job search agent."""
 
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 import logging
-from threading import Lock
+from threading import Event, Lock
 from time import perf_counter
 import yaml
 from pathlib import Path
@@ -34,6 +34,8 @@ from .ats import (
     MetaFetcher,
     GoogleFetcher,
     TikTokFetcher,
+    SalesforceFetcher,
+    PhenomFetcher,
 )
 
 logger = logging.getLogger(__name__)
@@ -67,6 +69,8 @@ class Orchestrator:
         self._run_saved = 0
         self._run_fetched = 0
         self._company_outcomes = {}
+        self._company_started = {}
+        self._stop_event = Event()
 
         self.registry = CompanyRegistry()
         self.store = JobStore(output_dir)
@@ -243,7 +247,9 @@ class Orchestrator:
         company.career_url = effective_url
 
         fetcher_class = self._fetcher_classes().get(ats_type, GenericFetcher)
-        return fetcher_class(company.name, effective_url, self.timeout)
+        fetcher = fetcher_class(company.name, effective_url, self.timeout)
+        fetcher.set_stop_event(self._stop_event)
+        return fetcher
 
     @staticmethod
     def _fetcher_classes() -> dict:
@@ -268,6 +274,8 @@ class Orchestrator:
             "meta": MetaFetcher,
             "google": GoogleFetcher,
             "tiktok": TikTokFetcher,
+            "salesforce": SalesforceFetcher,
+            "phenom": PhenomFetcher,
         }
 
     def crawl_company(self, company: Company) -> List[Job]:
@@ -280,6 +288,8 @@ class Orchestrator:
             List of Job objects found.
         """
         started_at = perf_counter()
+        with self._run_stats_lock:
+            self._company_started[company.name] = started_at
         logger.info("[%s] crawl started", company.name)
         original_career_url = company.career_url
 
@@ -301,11 +311,13 @@ class Orchestrator:
                         discovered_url,
                         discovered_class.__name__,
                     )
-                    with discovered_class(
+                    discovered_fetcher = discovered_class(
                         company.name,
                         discovered_url,
                         self.timeout,
-                    ) as discovered_fetcher:
+                    )
+                    discovered_fetcher.set_stop_event(self._stop_event)
+                    with discovered_fetcher:
                         discovered_jobs = discovered_fetcher.fetch_job_list()
                     if discovered_jobs:
                         jobs = discovered_jobs
@@ -330,11 +342,13 @@ class Orchestrator:
                         " after HTTP block" if blocked_by_http else "",
                         fallback_url,
                     )
-                    with GenericFetcher(
+                    fallback = GenericFetcher(
                         company.name,
                         fallback_url,
                         self.timeout,
-                    ) as fallback:
+                    )
+                    fallback.set_stop_event(self._stop_event)
+                    with fallback:
                         jobs = fallback.fetch_job_list()
                 fetched_count = len(jobs)
                 if fetched_count:
@@ -421,33 +435,91 @@ class Orchestrator:
             self._run_saved = 0
             self._run_fetched = 0
             self._company_outcomes = {}
+            self._company_started = {}
+        self._stop_event.clear()
         run_id = self.store.mysql_store.start_crawl_run(len(self.companies))
         self.store.mysql_store.set_crawl_run_id(run_id)
 
-        with ThreadPoolExecutor(max_workers=self.max_workers, thread_name_prefix="crawl") as executor:
+        executor = ThreadPoolExecutor(
+            max_workers=self.max_workers,
+            thread_name_prefix="crawl",
+        )
+        try:
             futures = {
                 executor.submit(self.crawl_company, company): company
                 for company in self.companies
             }
-            for future in as_completed(futures):
-                company = futures[future]
-                outcome = "failed"
-                try:
-                    jobs = future.result()
+            pending = set(futures)
+            while pending:
+                completed_futures, pending = wait(
+                    pending,
+                    timeout=60,
+                    return_when=FIRST_COMPLETED,
+                )
+                if not completed_futures:
                     with self._run_stats_lock:
-                        outcome = self._company_outcomes.get(company.name, "failed")
-                    if jobs:
-                        total_jobs += len(jobs)
-                        successful_companies += 1
-                    if outcome == "failed":
+                        active = sorted(
+                            (
+                                perf_counter() - self._company_started.get(
+                                    futures[future].name,
+                                    perf_counter(),
+                                ),
+                                futures[future].name,
+                            )
+                            for future in pending
+                        )
+                    logger.warning(
+                        "No company completed in the last 60s; still running: %s",
+                        ", ".join(
+                            f"{name} ({elapsed:.0f}s)"
+                            for elapsed, name in active[:12]
+                        ),
+                    )
+                    continue
+                for future in completed_futures:
+                    company = futures[future]
+                    outcome = "failed"
+                    try:
+                        jobs = future.result()
+                        with self._run_stats_lock:
+                            outcome = self._company_outcomes.get(company.name, "failed")
+                        if jobs:
+                            total_jobs += len(jobs)
+                            successful_companies += 1
+                        if outcome == "failed":
+                            failed_companies.append(company.name)
+                    except Exception:
+                        logger.exception("[%s] worker failed", company.name)
                         failed_companies.append(company.name)
-                except Exception:
-                    logger.exception("[%s] worker failed", company.name)
-                    failed_companies.append(company.name)
-                finally:
-                    if self.progress_callback:
-                        completed = len(futures) - sum(1 for item in futures if not item.done())
-                        self.progress_callback(completed, len(futures), company.name, outcome)
+                    finally:
+                        if self.progress_callback:
+                            completed = len(futures) - len(pending)
+                            self.progress_callback(completed, len(futures), company.name, outcome)
+        except KeyboardInterrupt:
+            # Do not let the executor context manager turn one Ctrl-C into an
+            # unbounded ``shutdown(wait=True)``. Running requests retain
+            # their bounded client timeout; queued companies are cancelled.
+            logger.warning("Crawl interrupted; cancelling queued companies")
+            self._stop_event.set()
+            for future in locals().get("futures", {}):
+                future.cancel()
+            executor.shutdown(wait=False, cancel_futures=True)
+            self.store.mysql_store.finish_crawl_run(
+                run_id,
+                status="interrupted",
+                companies_succeeded=sum(
+                    1
+                    for outcome in self._company_outcomes.values()
+                    if outcome in {"matched", "title_filtered", "location_filtered"}
+                ),
+                companies_failed=0,
+                jobs_fetched=self._run_fetched,
+                jobs_saved=self._run_saved,
+            )
+            self.store.mysql_store.set_crawl_run_id(None)
+            raise
+        else:
+            executor.shutdown(wait=True)
 
         # Cleanup
         companies_fetched = sum(

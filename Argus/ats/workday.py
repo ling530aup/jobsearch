@@ -97,11 +97,13 @@ class WorkdayFetcher(CareerFetcher):
             if not isinstance(job_postings, list) or not job_postings:
                 break
 
+            new_paths = 0
             for job_data in job_postings:
                 external_path = job_data.get("externalPath", "")
                 if not external_path or external_path in seen_paths:
                     continue
                 seen_paths.add(external_path)
+                new_paths += 1
                 title = job_data.get("title", "")
                 if title:
                     jobs.append(Job(
@@ -114,6 +116,11 @@ class WorkdayFetcher(CareerFetcher):
 
             total = data.get("total")
             offset += len(job_postings)
+            # A few tenants ignore the requested offset and repeat their
+            # first page. Stop that malformed pagination immediately rather
+            # than spending one request timeout per imaginary page.
+            if new_paths == 0:
+                break
             # Some tenants only include the total on the first page and return
             # zero on later pages. A zero total must not stop pagination.
             if len(job_postings) < limit or (isinstance(total, int) and total > 0 and offset >= total):
@@ -161,9 +168,26 @@ class WorkdayFetcher(CareerFetcher):
             return locations
 
         bullet_fields = job_data.get("bulletFields", [])
+        values = []
         for field in bullet_fields:
-            if "location" in str(field).lower():
-                return str(field)
+            value = str(field or "").strip()
+            if not value:
+                continue
+            if "location" in value.casefold():
+                # Some tenants label this field (for example ``Location:
+                # London``), while others expose only its value.
+                return re.sub(r"^\s*locations?\s*[:\-]?\s*", "", value, flags=re.I)
+            # The first bullet is normally a requisition number, not a
+            # location. Keep every subsequent human-readable value: several
+            # Workday tenants expose only ``[requisition id, city]`` here.
+            if not re.fullmatch(r"(?:req(?:uisition)?\s*)?[A-Z]{0,4}\d[\w-]*", value, re.I):
+                values.append(value)
+
+        if values:
+            # Preserve all remaining labels instead of guessing which one is
+            # the city. The location matcher already examines each separator-
+            # delimited component and will only retain configured geography.
+            return "; ".join(dict.fromkeys(values))
 
         return ""
 
