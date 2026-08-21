@@ -15,7 +15,7 @@ companies:
   career_url: https://www.affirm.com/careers
   ats_type: unknown
 - name: Airwallex
-  career_url: https://careers.airwallex.com/
+  career_url: https://careers.airwallex.com
   ats_type: unknown
 - name: Algolia
   career_url: https://www.algolia.com/careers
@@ -84,7 +84,7 @@ companies:
   career_url: https://joinbytedance.com/#/
   ats_type: unknown
 - name: Cambridge Aerospace
-  career_url: https://cambridgeaerospace.com/careers
+  career_url: https://cambridgeaerospace.com/careers/
   ats_type: unknown
 - name: Canva
   career_url: https://www.lifeatcanva.com/en/jobs/
